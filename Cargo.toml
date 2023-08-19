@@ -1,0 +1,14 @@
+[package]
+name = "rt_core"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tracing = "0.1.37"
+csv = "1.2"
+rust_decimal = { version = "1.29", features = ["maths"] }
+rust_decimal_macros = "1.29"
+serde = { version = "1.0", features = ["derive"] }
+chrono = { version = "0.4.24", features = ["serde"] }
