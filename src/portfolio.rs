@@ -37,7 +37,7 @@ impl<T, F> Portfolio<T, F> where T: PortfolioNumberType, F: DataNumberType {
                             match y.get_side() {
                                 Side::Buy => {
                                     *x += y.get_volume().into();
-                                    self.cash -= y.get_cost().into() - y.get_commission().into();
+                                    self.cash -= y.get_cost().into() + y.get_commission().into();
                                 },
                                 Side::Sell => {
                                     *x -= y.get_volume().into();
@@ -78,4 +78,78 @@ impl<T, F> Portfolio<T, F> where T: PortfolioNumberType, F: DataNumberType {
         &self.filled_orders
     }
 
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::broker::orders::{FilledOrder, MarketOrder, OrderType};
+
+    #[test]
+    fn test_update_holdings_buy_order() {
+
+        // Arrange
+        let mut portfolio: Portfolio<f64, f64> = Portfolio::new();
+
+        portfolio.cash = 10000.0;
+
+        let order: MarketOrder<f64> = MarketOrder::new("1", Security::Equity(String::from("Test")), 1000, 1000.0, Side::Buy);
+
+        let mut orders: Vec<Result<FilledOrder<f64>, _>> = Vec::new();
+        orders.push(Ok(FilledOrder::new(
+            OrderType::MarketOrder(order),
+            1000,
+            1000.0,
+            6.0,
+            1.0,
+            false)
+        ));
+
+
+        let expected = 3999.0;
+
+        // Act
+        portfolio.update_holdings(orders);
+        let result = portfolio.cash;
+
+        // Assert
+
+        assert_eq!(result, expected);
+
+    }
+
+
+    #[test]
+    fn test_update_holdings_sell_order() {
+
+        // Arrange
+        let mut portfolio: Portfolio<f64, f64> = Portfolio::new();
+
+        portfolio.cash = 10000.0;
+
+        let order: MarketOrder<f64> = MarketOrder::new("1", Security::Equity(String::from("Test")), 1000, 1000.0, Side::Sell);
+
+        let mut orders: Vec<Result<FilledOrder<f64>, _>> = Vec::new();
+        orders.push(Ok(FilledOrder::new(
+            OrderType::MarketOrder(order),
+            1000,
+            1000.0,
+            6.0,
+            1.0,
+            false)
+        ));
+
+
+        let expected_cash = 15999.0;
+        let expected_holdings = 0.0;
+
+        // Act
+        portfolio.update_holdings(orders);
+        let result = portfolio.cash;
+
+        // Assert
+
+        assert_eq!(result, expected);
+
+    }
 }
