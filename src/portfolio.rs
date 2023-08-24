@@ -1,9 +1,10 @@
-use std::{collections::HashMap, hash::Hash};
+use std::collections::HashMap;
 
 use crate::{broker::orders::FilledOrder, PortfolioNumberType, DataNumberType, Security};
 use crate::broker::orders::{Side, OrderError};
 
 
+/// A Holding stores information about the security that a portfolio contains.
 #[derive(Debug, PartialEq, PartialOrd, Eq)]
 pub enum Holding<T> where T: PortfolioNumberType {
 
@@ -12,7 +13,7 @@ pub enum Holding<T> where T: PortfolioNumberType {
 
 impl<T> Holding<T> where T: PortfolioNumberType {
 
-    pub fn add(&mut self, volume: T) {
+    fn add(&mut self, volume: T) {
         match self {
             Self::Equity(x) => {
                 *x += volume
@@ -20,7 +21,7 @@ impl<T> Holding<T> where T: PortfolioNumberType {
         }
     }
 
-    pub fn sub(&mut self, volume: T) {
+    fn sub(&mut self, volume: T) {
         match self {
             Self::Equity(x) => {
                 *x -= volume
@@ -28,7 +29,7 @@ impl<T> Holding<T> where T: PortfolioNumberType {
         }
     }
 
-    pub fn new(symbol: Security, volume: T) -> Self {
+    fn new(symbol: Security, volume: T) -> Self {
         match symbol {
             Security::Equity(_) => {
                 return Self::Equity(volume)
@@ -73,7 +74,7 @@ impl<T, F> Portfolio<T, F> where T: PortfolioNumberType, F: DataNumberType {
                             match y.get_side() {
                                 Side::Buy => {
                                     x.add(y.get_volume().into());
-                                    self.cash -= (y.get_cost().into() + y.get_commission().into());
+                                    self.cash -= y.get_cost().into() + y.get_commission().into();
                                 },
                                 Side::Sell => {
                                     x.sub(y.get_volume().into());
@@ -85,7 +86,7 @@ impl<T, F> Portfolio<T, F> where T: PortfolioNumberType, F: DataNumberType {
                             match y.get_side() {
                                 Side::Buy => {
                                     self.holdings.insert(y.get_symbol(), Holding::new(y.get_symbol(), y.get_volume().into()));
-                                    self.cash -= (y.get_cost().into() + y.get_commission().into());
+                                    self.cash -= y.get_cost().into() + y.get_commission().into();
                                 },
                                 Side::Sell => {}   
                             }  
@@ -189,7 +190,7 @@ mod tests {
         orders.push(Ok(filled_order));
 
         let expected_cash = 5999.0;
-        let mut expected_holdings = &Holding::Equity(0.0);
+        let expected_holdings = &Holding::Equity(0.0);
 
         // Act
         portfolio.update_holdings(orders);
