@@ -3,12 +3,48 @@ use std::{collections::HashMap, hash::Hash};
 use crate::{broker::orders::FilledOrder, PortfolioNumberType, DataNumberType, Security};
 use crate::broker::orders::{Side, OrderError};
 
-pub struct Portfolio<T, F> where F: DataNumberType {
+
+#[derive(Debug, PartialEq, PartialOrd, Eq)]
+pub enum Holding<T> where T: PortfolioNumberType {
+
+    Equity(T)
+}
+
+impl<T> Holding<T> where T: PortfolioNumberType {
+
+    pub fn add(&mut self, volume: T) {
+        match self {
+            Self::Equity(x) => {
+                *x += volume
+            },
+        }
+    }
+
+    pub fn sub(&mut self, volume: T) {
+        match self {
+            Self::Equity(x) => {
+                *x -= volume
+            }
+        }
+    }
+
+    pub fn new(symbol: Security, volume: T) -> Self {
+        match symbol {
+            Security::Equity(_) => {
+                return Self::Equity(volume)
+            }
+        }
+    }
+}
+
+pub struct Portfolio<T, F> where
+    T: PortfolioNumberType,
+    F: DataNumberType {
 
     // TODO: Add support for foreign cash
     cash: T,
 
-    holdings: HashMap<Security, T>,
+    holdings: HashMap<Security, Holding<T>>,
 
     filled_orders: HashMap<String, Result<FilledOrder<F>, OrderError<F>>>
 
@@ -36,11 +72,11 @@ impl<T, F> Portfolio<T, F> where T: PortfolioNumberType, F: DataNumberType {
                         Some(x) => {
                             match y.get_side() {
                                 Side::Buy => {
-                                    *x += y.get_volume().into();
-                                    self.cash -= y.get_cost().into() + y.get_commission().into();
+                                    x.add(y.get_volume().into());
+                                    self.cash -= (y.get_cost().into() + y.get_commission().into());
                                 },
                                 Side::Sell => {
-                                    *x -= y.get_volume().into();
+                                    x.sub(y.get_volume().into());
                                     self.cash += y.get_cost().into() - y.get_commission().into();
                                 }   
                             }
@@ -48,8 +84,8 @@ impl<T, F> Portfolio<T, F> where T: PortfolioNumberType, F: DataNumberType {
                         None => {
                             match y.get_side() {
                                 Side::Buy => {
-                                    self.holdings.insert(y.get_symbol(), y.get_volume().into());
-                                    self.cash -= y.get_cost().into() - y.get_commission().into();
+                                    self.holdings.insert(y.get_symbol(), Holding::new(y.get_symbol(), y.get_volume().into()));
+                                    self.cash -= (y.get_cost().into() + y.get_commission().into());
                                 },
                                 Side::Sell => {}   
                             }  
@@ -106,15 +142,20 @@ mod tests {
         ));
 
 
-        let expected = 3999.0;
+        let expected_cash = 3999.0;
+
+        let expected_holdings = &Holding::Equity(1000.0);
+
 
         // Act
         portfolio.update_holdings(orders);
-        let result = portfolio.cash;
+        let result_cash = portfolio.cash;
+        let result_holdings = portfolio.holdings.get(&Security::Equity(String::from("Test"))).unwrap();
 
         // Assert
 
-        assert_eq!(result, expected);
+        assert_eq!(result_cash, expected_cash);
+        assert_eq!(result_holdings, expected_holdings)
 
     }
 
@@ -125,31 +166,40 @@ mod tests {
         // Arrange
         let mut portfolio: Portfolio<f64, f64> = Portfolio::new();
 
-        portfolio.cash = 10000.0;
+        portfolio.cash = 0.0;
+
+        let mut portfolio_map = HashMap::new();
+        portfolio_map.insert(Security::Equity(String::from("Test")), Holding::Equity(1000.0));
+
+        portfolio.holdings = portfolio_map;
 
         let order: MarketOrder<f64> = MarketOrder::new("1", Security::Equity(String::from("Test")), 1000, 1000.0, Side::Sell);
 
         let mut orders: Vec<Result<FilledOrder<f64>, _>> = Vec::new();
-        orders.push(Ok(FilledOrder::new(
+
+        let filled_order = FilledOrder::new(
             OrderType::MarketOrder(order),
             1000,
             1000.0,
             6.0,
             1.0,
-            false)
-        ));
+            false
+        );
 
+        orders.push(Ok(filled_order));
 
-        let expected_cash = 15999.0;
-        let expected_holdings = 0.0;
+        let expected_cash = 5999.0;
+        let mut expected_holdings = &Holding::Equity(0.0);
 
         // Act
         portfolio.update_holdings(orders);
-        let result = portfolio.cash;
+        let result_cash = portfolio.cash;
+        let result_holdings = portfolio.holdings.get(&Security::Equity(String::from("Test"))).unwrap();
 
         // Assert
 
-        assert_eq!(result, expected);
+        assert_eq!(result_cash, expected_cash);
+        assert_eq!(result_holdings, expected_holdings);
 
     }
 }
