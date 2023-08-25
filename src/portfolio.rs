@@ -115,6 +115,10 @@ impl<T, F> Portfolio<T, F> where T: PortfolioNumberType, F: DataNumberType {
         &self.filled_orders
     }
 
+    pub fn get_holding(&self, symbol: Security) -> Option<&Holding<T>> {
+        self.holdings.get(&symbol)
+    }
+
 }
 
 #[cfg(test)]

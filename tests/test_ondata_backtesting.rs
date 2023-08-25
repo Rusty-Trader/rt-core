@@ -68,7 +68,7 @@ impl Algo for MyAlgo {
             engine.submit_market_order(rt_core::Security::Equity(String::from("AAPL")), 1000.0, Side::Buy);
         }
         println!("{:?}", engine.cash_balance());
-        println!("{:?}", engine.get_filled_orders())
+        println!("{:?}", engine.get_holding(rt_core::Security::Equity(String::from("AAPL"))))
         
     }
 }
