@@ -9,7 +9,7 @@ use super::super::error::BrokerError;
 use super::PortfolioData;
 
 use crate::portfolio::Portfolio;
-use crate::{DataNumberType, Security, PortfolioNumberType};
+use crate::{DataNumberType, SecuritySymbol, PortfolioNumberType};
 use crate::broker::orders::{FilledOrder, OrderType, MarketOrder, OrderError};
 use crate::data::DataType;
 use crate::time::TimeSync;
@@ -70,7 +70,7 @@ pub struct BasicFillEngine<T, U> where
 
     data_receiver: Option<Receiver<DataPoint<T>>>,
 
-    data_lines: HashMap<Security, DataPoint<T>>,
+    data_lines: HashMap<SecuritySymbol, DataPoint<T>>,
 
     open_orders: HashMap<String, OrderType<T>>,
 
@@ -355,7 +355,7 @@ mod tests {
 
         basic_fill_engine.connect_to_engine(TimeSync::new(1000, Resolution::Day));
 
-        let mut order = OrderType::MarketOrder(MarketOrder::new("1", Security::Equity(String::from("AAPL")), 1649289600000, 1000.0, Side::Buy));
+        let mut order = OrderType::MarketOrder(MarketOrder::new("1", SecuritySymbol::Equity(String::from("AAPL")), 1649289600000, 1000.0, Side::Buy));
 
         // order.set_timestamp(1649289600000);
 

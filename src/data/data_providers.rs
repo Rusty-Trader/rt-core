@@ -57,7 +57,7 @@ impl<T> IntoDataPoint for YahooFinanceTradeBar<T> where T: Clone {
         tmp.symbol = String::from(symbol);
 
         DataPoint {
-            symbol: crate::Security::Equity(String::from(symbol)),
+            symbol: crate::SecuritySymbol::Equity(String::from(symbol)),
             time: tmp.end_time,
             data: DataType::Bar(tmp),
             period: resolution

@@ -7,11 +7,11 @@ pub mod slice;
 
 use tradebars::TradeBar;
 
-use crate::Security;
+use crate::SecuritySymbol;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct DataPoint<T: Clone> {
-    symbol: Security,
+    symbol: SecuritySymbol,
     time: i64,
     data: DataType<T>,
     period: Resolution,
@@ -19,7 +19,7 @@ pub struct DataPoint<T: Clone> {
 
 impl<T> DataPoint<T> where T: Clone {
 
-    pub fn new(symbol: Security, time: i64, data: DataType<T>, period: Resolution) -> Self {
+    pub fn new(symbol: SecuritySymbol, time: i64, data: DataType<T>, period: Resolution) -> Self {
         Self { 
             symbol,
             time,
@@ -28,7 +28,7 @@ impl<T> DataPoint<T> where T: Clone {
         }
     }
     
-    pub fn get_symbol(&self) -> Security {
+    pub fn get_symbol(&self) -> SecuritySymbol {
         self.symbol.clone()
     }
 

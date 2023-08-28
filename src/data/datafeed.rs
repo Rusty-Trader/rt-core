@@ -269,7 +269,7 @@ mod tests {
 
         data.push(
             DataPoint { 
-                symbol: crate::Security::Equity(String::from("TS")), 
+                symbol: crate::SecuritySymbol::Equity(String::from("TS")), 
                 time: 28000, 
                 data: DataType::Bar(TradeBar::new(
                     1000.0,

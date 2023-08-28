@@ -12,7 +12,7 @@ pub mod portfolio;
 pub mod broker;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum Security {
+pub enum SecuritySymbol {
     Equity(String)
 }
 
@@ -53,7 +53,7 @@ pub mod test_utils {
 
         output.push(
             DataPoint::new(
-                crate::Security::Equity(String::from("AAPL")),
+                crate::SecuritySymbol::Equity(String::from("AAPL")),
                 1649116800000,
                 DataType::Bar(TradeBar::new(
                     76468400.0,
@@ -73,7 +73,7 @@ pub mod test_utils {
 
         output.push(
             DataPoint::new(
-                crate::Security::Equity(String::from("AAPL")),
+                crate::SecuritySymbol::Equity(String::from("AAPL")),
                 1649203200000,
                 DataType::Bar(TradeBar::new(
                     73401800.0,
@@ -93,7 +93,7 @@ pub mod test_utils {
 
         output.push(
             DataPoint::new(
-                crate::Security::Equity(String::from("AAPL")),
+                crate::SecuritySymbol::Equity(String::from("AAPL")),
                 1649289600000,
                 DataType::Bar(TradeBar::new(
                     89058800.0,
@@ -113,7 +113,7 @@ pub mod test_utils {
 
         output.push(
             DataPoint::new(
-                crate::Security::Equity(String::from("AAPL")),
+                crate::SecuritySymbol::Equity(String::from("AAPL")),
                 1649376000000,
                 DataType::Bar(TradeBar::new(
                     77594700.0,

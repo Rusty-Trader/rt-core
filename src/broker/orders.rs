@@ -1,6 +1,6 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::{DataNumberType, Security};
+use crate::{DataNumberType, SecuritySymbol};
 
 
 
@@ -16,7 +16,7 @@ pub trait Order {
 
     fn get_id(&self) -> String;
 
-    fn get_symbol(&self) -> Security;
+    fn get_symbol(&self) -> SecuritySymbol;
 
     fn get_timestamp(&self) -> i64;
 
@@ -51,7 +51,7 @@ impl<T> Order for OrderType<T> where T: DataNumberType {
         }
     }
 
-    fn get_symbol(&self) -> Security {
+    fn get_symbol(&self) -> SecuritySymbol {
         match self {
             OrderType::MarketOrder(x) => x.get_symbol()
         }
@@ -82,7 +82,7 @@ pub struct MarketOrder<T> where T: Clone {
 
     id: String,
 
-    symbol: Security,
+    symbol: SecuritySymbol,
 
     timestamp: i64,
 
@@ -94,7 +94,7 @@ pub struct MarketOrder<T> where T: Clone {
 
 impl<T> MarketOrder<T> where T: Clone {
 
-    pub fn new(id: &str, symbol: Security, timestamp: i64, volume: T, side: Side) -> Self {
+    pub fn new(id: &str, symbol: SecuritySymbol, timestamp: i64, volume: T, side: Side) -> Self {
         Self { 
             id: String::from(id),
             symbol,
@@ -123,7 +123,7 @@ impl<T> Order for MarketOrder<T> where T: Clone {
         self.id.clone()
     }
 
-    fn get_symbol(&self) -> Security {
+    fn get_symbol(&self) -> SecuritySymbol {
         self.symbol.clone()
     }
 
@@ -175,7 +175,7 @@ impl<T> FilledOrder<T> where T: DataNumberType {
         self.order.get_id()
     }
 
-    pub fn get_symbol(&self) -> Security {
+    pub fn get_symbol(&self) -> SecuritySymbol {
         self.order.get_symbol()
     }
 
@@ -226,7 +226,7 @@ impl<T> OrderError<T> where T: DataNumberType {
         self.order.get_id()
     }
 
-    pub fn get_symbol(&self) -> Security {
+    pub fn get_symbol(&self) -> SecuritySymbol {
         self.order.get_symbol()
     }
 }

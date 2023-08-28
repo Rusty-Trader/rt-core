@@ -8,7 +8,7 @@ use std::time::SystemTime;
 
 use std::time::Duration;
 
-use crate::Security;
+use crate::SecuritySymbol;
 use crate::rtengine::{RunMode, BackTester};
 use crate::time::TimeSync;
 use crate::utils::Merge;
@@ -24,7 +24,7 @@ pub struct DataManager<T> where T: Clone {
 
     buffer: VecDeque<DataPoint<T>>, // TODO: Deprecate
 
-    securities: HashMap<Security, String>,
+    securities: HashMap<SecuritySymbol, String>,
 
     feeds: HashMap<String, Box<dyn DataFeed<NumberType = T>>>,
 

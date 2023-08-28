@@ -65,10 +65,10 @@ impl Algo for MyAlgo {
         println!("{}", slice);
         println!("{}", engine.get_time());
         if engine.get_time() == 1649376000000 {
-            engine.submit_market_order(rt_core::Security::Equity(String::from("AAPL")), 1000.0, Side::Buy);
+            engine.submit_market_order(rt_core::SecuritySymbol::Equity(String::from("AAPL")), 1000.0, Side::Buy);
         }
         println!("{:?}", engine.cash_balance());
-        println!("{:?}", engine.get_holding(rt_core::Security::Equity(String::from("AAPL"))))
+        println!("{:?}", engine.get_holding(rt_core::SecuritySymbol::Equity(String::from("AAPL"))))
         
     }
 }

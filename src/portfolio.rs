@@ -1,6 +1,7 @@
 use std::collections::HashMap;
+use std::hash::Hash;
 
-use crate::{broker::orders::FilledOrder, PortfolioNumberType, DataNumberType, Security};
+use crate::{broker::orders::FilledOrder, PortfolioNumberType, DataNumberType, SecuritySymbol};
 use crate::broker::orders::{Side, OrderError};
 
 
@@ -28,9 +29,9 @@ impl<T> Holding<T> where T: PortfolioNumberType {
         }
     }
 
-    fn new(symbol: Security, volume: T) -> Self {
+    fn new(symbol: SecuritySymbol, volume: T) -> Self {
         match symbol {
-            Security::Equity(_) => {
+            SecuritySymbol::Equity(_) => {
                 return Self::Equity(volume)
             }
         }
@@ -42,31 +43,32 @@ pub struct Portfolio<T, F> where
     F: DataNumberType {
 
     // TODO: Add support for foreign cash
-    cash: HashMap<String, T>,
+    cash: T,
 
-    holdings: HashMap<Security, Holding<T>>,
+    holdings: HashMap<SecuritySymbol, Holding<T>>,
 
     filled_orders: HashMap<String, Result<FilledOrder<F>, OrderError<F>>>,
 
-    base_currency: String
+    // registered_securities: HashMap<SecuritySymbol, SecurityDetails>
 
+
+}
+
+
+pub enum SecurityDetails {
+
+    
 
 }
 
 
 impl<T, F> Portfolio<T, F> where T: PortfolioNumberType, F: DataNumberType {
 
-    pub fn new(currency: &str) -> Self {
-        
-        let mut cash_map = HashMap::new();
-
-        cash_map.insert(currency.to_owned(), 0.into());
-
+    pub fn new() -> Self {
         Self {
-            cash: cash_map,
+            cash: <i8 as Into<T>>::into(1),
             holdings: HashMap::new(),
             filled_orders: HashMap::new(),
-            base_currency: currency.to_owned()
         }
     }
 
@@ -122,7 +124,7 @@ impl<T, F> Portfolio<T, F> where T: PortfolioNumberType, F: DataNumberType {
         &self.filled_orders
     }
 
-    pub fn get_holding(&self, symbol: Security) -> Option<&Holding<T>> {
+    pub fn get_holding(&self, symbol: SecuritySymbol) -> Option<&Holding<T>> {
         self.holdings.get(&symbol)
     }
 
@@ -141,7 +143,7 @@ mod tests {
 
         portfolio.cash = 10000.0;
 
-        let order: MarketOrder<f64> = MarketOrder::new("1", Security::Equity(String::from("Test")), 1000, 1000.0, Side::Buy);
+        let order: MarketOrder<f64> = MarketOrder::new("1", SecuritySymbol::Equity(String::from("Test")), 1000, 1000.0, Side::Buy);
 
         let mut orders: Vec<Result<FilledOrder<f64>, _>> = Vec::new();
         orders.push(Ok(FilledOrder::new(
@@ -162,7 +164,7 @@ mod tests {
         // Act
         portfolio.update_holdings(orders);
         let result_cash = portfolio.cash;
-        let result_holdings = portfolio.holdings.get(&Security::Equity(String::from("Test"))).unwrap();
+        let result_holdings = portfolio.holdings.get(&SecuritySymbol::Equity(String::from("Test"))).unwrap();
 
         // Assert
 
@@ -181,11 +183,11 @@ mod tests {
         portfolio.cash = 0.0;
 
         let mut portfolio_map = HashMap::new();
-        portfolio_map.insert(Security::Equity(String::from("Test")), Holding::Equity(1000.0));
+        portfolio_map.insert(SecuritySymbol::Equity(String::from("Test")), Holding::Equity(1000.0));
 
         portfolio.holdings = portfolio_map;
 
-        let order: MarketOrder<f64> = MarketOrder::new("1", Security::Equity(String::from("Test")), 1000, 1000.0, Side::Sell);
+        let order: MarketOrder<f64> = MarketOrder::new("1", SecuritySymbol::Equity(String::from("Test")), 1000, 1000.0, Side::Sell);
 
         let mut orders: Vec<Result<FilledOrder<f64>, _>> = Vec::new();
 
@@ -206,7 +208,7 @@ mod tests {
         // Act
         portfolio.update_holdings(orders);
         let result_cash = portfolio.cash;
-        let result_holdings = portfolio.holdings.get(&Security::Equity(String::from("Test"))).unwrap();
+        let result_holdings = portfolio.holdings.get(&SecuritySymbol::Equity(String::from("Test"))).unwrap();
 
         // Assert
 

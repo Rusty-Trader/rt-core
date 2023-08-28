@@ -5,7 +5,7 @@ use std::sync::atomic::AtomicI64;
 use std::sync::Arc;
 use chrono::NaiveDateTime;
 
-use crate::Security;
+use crate::SecuritySymbol;
 use crate::algorithm::Algo;
 use crate::broker::fill::PortfolioData;
 use crate::broker::fill::engine::FillEngine;
@@ -120,7 +120,7 @@ impl<T, U> RTEngine<T, U> where
         self.portfolio.get_filled_orders().values().cloned().collect()
     }
 
-    pub fn submit_market_order(&mut self, symbol: Security, volume: f64, side: Side) -> Result<(), Error> {
+    pub fn submit_market_order(&mut self, symbol: SecuritySymbol, volume: f64, side: Side) -> Result<(), Error> {
 
         Ok(self.broker.submit_order(
             crate::broker::orders::OrderType::MarketOrder(
@@ -138,7 +138,7 @@ impl<T, U> RTEngine<T, U> where
         self.portfolio.get_cash()
     }
 
-    pub fn get_holding(&self, symbol: Security) -> Option<&Holding<f64>> {
+    pub fn get_holding(&self, symbol: SecuritySymbol) -> Option<&Holding<f64>> {
         self.portfolio.get_holding(symbol)
     }
 
