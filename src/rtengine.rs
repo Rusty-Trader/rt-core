@@ -14,7 +14,7 @@ use crate::data::datamanger::DataManager;
 use crate::data::datafeed::DataFeed;
 use crate::error::Error;
 use crate::data::datafeed::DataFeedBuilder;
-use crate::portfolio::Portfolio;
+use crate::portfolio::{Portfolio, Holding};
 use crate::time::TimeSync;
 use crate::broker::{Broker, BacktestingBroker};
 use crate::broker::orders::{Order, Side, MarketOrder, FilledOrder, OrderError};
@@ -136,6 +136,10 @@ impl<T, U> RTEngine<T, U> where
 
     pub fn cash_balance(&self) -> f64 {
         self.portfolio.get_cash()
+    }
+
+    pub fn get_holding(&self, symbol: Security) -> Option<&Holding<f64>> {
+        self.portfolio.get_holding(symbol)
     }
 
     fn update_holdings(&mut self) {
