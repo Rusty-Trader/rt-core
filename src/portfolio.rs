@@ -37,6 +37,22 @@ impl<T> Holding<T> where T: PortfolioNumberType {
     }
 }
 
+pub struct Cash<T> where T: PortfolioNumberType {
+    volume: T,
+    rate: T
+}
+
+impl<T> Cash<T> where T: PortfolioNumberType {
+
+    pub fn new(volume: T, rate: T) -> Self {
+        Self {
+            volume,
+            rate
+        }
+    }
+    
+}
+
 pub struct Portfolio<T, F> where
     T: PortfolioNumberType,
     F: DataNumberType {
