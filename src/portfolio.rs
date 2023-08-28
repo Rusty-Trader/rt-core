@@ -7,7 +7,6 @@ use crate::broker::orders::{Side, OrderError};
 /// A Holding stores information about the security that a portfolio contains.
 #[derive(Debug, PartialEq, PartialOrd, Eq)]
 pub enum Holding<T> where T: PortfolioNumberType {
-
     Equity(T)
 }
 
@@ -43,11 +42,13 @@ pub struct Portfolio<T, F> where
     F: DataNumberType {
 
     // TODO: Add support for foreign cash
-    cash: T,
+    cash: HashMap<String, T>,
 
     holdings: HashMap<Security, Holding<T>>,
 
-    filled_orders: HashMap<String, Result<FilledOrder<F>, OrderError<F>>>
+    filled_orders: HashMap<String, Result<FilledOrder<F>, OrderError<F>>>,
+
+    base_currency: String
 
 
 }
@@ -55,11 +56,17 @@ pub struct Portfolio<T, F> where
 
 impl<T, F> Portfolio<T, F> where T: PortfolioNumberType, F: DataNumberType {
 
-    pub fn new() -> Self {
+    pub fn new(currency: &str) -> Self {
+        
+        let mut cash_map = HashMap::new();
+
+        cash_map.insert(currency.to_owned(), 0.into());
+
         Self {
-            cash: <i8 as Into<T>>::into(1),
+            cash: cash_map,
             holdings: HashMap::new(),
-            filled_orders: HashMap::new()
+            filled_orders: HashMap::new(),
+            base_currency: currency.to_owned()
         }
     }
 
