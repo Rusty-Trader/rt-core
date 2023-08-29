@@ -44,6 +44,10 @@ impl<T> TradeBars<T> {
         self.data.get(symbol)
     }
 
+    pub fn has_data(&self) -> bool {
+        !self.data.is_empty()
+    }
+
     // pub fn map<U, F>(&self, f: F) -> Option<U> where F: FnOnce(T) -> U {
 
     // }

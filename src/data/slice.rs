@@ -2,7 +2,6 @@ use std::fmt;
 use chrono::NaiveDateTime;
 
 use super::{tradebars::{TradeBars, TradeBar}, DataPoint, DataType};
-use super::FillFwd;
 
 use crate::{utils::Merge, SecuritySymbol, DataNumberType};
 
@@ -11,7 +10,7 @@ pub struct Slice<T> {
 
     end_time: i64,
 
-    has_data: bool,
+    // has_data: bool,
 
     bars: Option<TradeBars<T>>,
 
@@ -22,14 +21,17 @@ impl<T> Slice<T> where T: DataNumberType {
     pub fn new(time: i64) -> Self {
         Self {
             end_time: time,
-            has_data: false,
+            // has_data: false,
             bars: None
         }
     }
 
     pub fn has_data(&self) -> bool {
         // TODO: Make dynamic
-        self.has_data
+        match &self.bars {
+            Some(bars) => {bars.has_data()},
+            None => false,
+        }
     }
 
     pub fn add_bar(&mut self, bar:TradeBar<T>) {
@@ -70,9 +72,9 @@ impl<T> Slice<T> where T: DataNumberType {
 
 }
 
-impl<T: fmt::Debug> fmt::Display for Slice<T> {
+impl<T: fmt::Debug> fmt::Display for Slice<T> where T: DataNumberType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "end time: {:?}, has data: {}, bars: {:?}", NaiveDateTime::from_timestamp_millis(self.end_time), self.has_data, self.bars)
+        write!(f, "end time: {:?}, has data: {}, bars: {:?}", NaiveDateTime::from_timestamp_millis(self.end_time), self.has_data(), self.bars)
     }
 }
 
@@ -115,7 +117,6 @@ impl<T> Ord for Slice<T> {
 impl<T> Merge for Slice<T> {
 
     fn merge(&mut self, other: Self) {
-        self.has_data = self.has_data || other.has_data;
         self.bars.merge(other.bars)
     }
 }
@@ -124,23 +125,63 @@ impl<T> Merge for Slice<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::data::tradebars::{TradeBar, TradeBars};
+    use crate::data::tradebars::TradeBar;
     use crate::test_utils::setup_data_line_daily;
+
+
+    fn setup_tradebar() -> TradeBar<f64> {
+
+        let input_data = setup_data_line_daily();
+
+        match input_data.get(0).unwrap().clone().get_data() {
+            DataType::Bar(x) => x,
+            _ => panic!("Data type for test should be trade bars")
+        }
+    }
+
+    #[test]
+    fn test_has_data_false() {
+
+        // Arrange
+        let slice: Slice<f64> = Slice::new(1649116800000);
+
+        let expected = false;
+
+        // Act
+        let result = slice.has_data();
+
+        //Assert
+        assert_eq!(result, expected)
+
+    }
+
+    #[test]
+    fn test_has_data_true() {
+
+        // Arrange
+        let mut slice: Slice<f64> = Slice::new(1649116800000);
+
+        let tradebar = setup_tradebar();
+
+        slice.add_bar(tradebar);
+
+        let expected = true;
+
+        // Act
+        let result = slice.has_data();
+
+        //Assert
+        assert_eq!(result, expected)
+
+    }
 
     #[test]
     fn test_add_bar() {
 
         // Arrange
+        let mut slice: Slice<f64> = Slice::new(1649116800000);
 
-        let mut input_data = setup_data_line_daily();
-
-        let mut slice = Slice::new(1649116800000);
-
-        
-        let tradebar = match input_data.get(0).unwrap().clone().get_data() {
-            DataType::Bar(x) => x,
-            _ => panic!("Data type for test should be trade bars")
-        };
+        let tradebar = setup_tradebar();
 
         let expected = tradebar.clone();
 
@@ -157,17 +198,13 @@ mod tests {
     fn test_add_datapoint() {
 
         // Arrange
-
         let mut input_data = setup_data_line_daily();
 
-        let mut slice = Slice::new(1649116800000);
+        let mut slice: Slice<f64> = Slice::new(1649116800000);
 
         let point = input_data.get(0).unwrap().clone();
 
-        let tradebar = match point.get_data(){
-            DataType::Bar(x) => x,
-            _ => panic!("Data type for test should be trade bars")
-        };
+        let tradebar = setup_tradebar();
 
         let expected = tradebar;
 
@@ -175,6 +212,26 @@ mod tests {
         slice.add_datapoint(point);
 
         let result = slice.bars.unwrap().get_bar(&SecuritySymbol::Equity(String::from("AAPL"))).unwrap().clone();
+
+        //Assert
+        assert_eq!(result, expected)
+
+    }
+
+    #[test]
+    fn test_get_bar_by_symbol() {
+
+        // Arrange
+        let mut slice: Slice<f64> = Slice::new(1649116800000);
+
+        let tradebar = setup_tradebar();
+
+        let expected = tradebar.clone();
+
+        // Act
+        slice.add_bar(tradebar);
+
+        let result = slice.get_bar_by_symbol(&SecuritySymbol::Equity(String::from("AAPL"))).unwrap().clone();
 
         //Assert
         assert_eq!(result, expected)
