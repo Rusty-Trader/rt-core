@@ -6,8 +6,13 @@ pub mod error;
 pub mod slice;
 
 use tradebars::TradeBar;
+use serde::{Serialize, Deserialize};
+use csv::Reader;
+use std::include_bytes;
 
-use crate::SecuritySymbol;
+use crate::{SecuritySymbol, security::{Currency, SecurityType}};
+
+use self::error::DataError;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct DataPoint<T: Clone> {
@@ -67,4 +72,58 @@ pub enum Resolution {
 
 pub trait FillFwd {
     fn fill_fwd(self) -> Self;
+}
+
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct DataSymbolProperties {
+    market: String,
+    symbol: String,
+    #[serde(rename(deserialize = "type"))]
+    security_type: SecurityType,
+    description: String,
+    quote_currency: Currency,
+    contract_multiplier: f64,
+    minimum_price_variation: f64,
+    lot_size: f64,
+    market_ticker: Option<String>,
+    minimum_order_size: Option<f64>,
+    price_magnifier: Option<f64>
+}
+
+pub fn deserialize_symbol_properties() -> Result<Vec<DataSymbolProperties>, DataError> {
+
+    let bytes = include_bytes!("data/data-symbol-properties.csv");
+
+    let mut tmp: Vec<DataSymbolProperties> = Vec::new();
+
+    let mut reader = Reader::from_reader(&bytes[..]);
+
+    for property in reader.deserialize() {
+        
+        tmp.push(property?);
+    }
+
+    Ok(tmp)
+
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_deserialize_symbol_properties() {
+
+        // Arrange
+
+        // Act
+        let result = deserialize_symbol_properties();
+        println!("{:?}", result);
+        // Assert
+        // assert_ne!()
+
+    }
+
 }

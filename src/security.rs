@@ -1,18 +1,42 @@
+use serde::Deserialize;
 
+
+#[derive(Debug, Deserialize, Clone, Copy)]
+pub enum SecurityType {
+    #[serde(rename(deserialize = "equity"))]
+    Equity,
+}
+
+
+#[derive(Debug, Deserialize)]
 pub enum Security {
     Equity(Equity)
 }
 
 
-
+#[derive(Debug, Deserialize)]
 pub struct Equity {
     currency: Currency
 }
 
 
+impl Equity {
+
+    pub fn new(currency: Currency) -> Self {
+        Self {
+            currency
+        }
+    }
+
+    pub fn get_currency(&self) -> Currency {
+        self.currency
+    }
+}
 
 
 
+
+#[derive(Debug, Clone, Copy, Deserialize)]
 pub enum Currency {
     AED,
     AFN,

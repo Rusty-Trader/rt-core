@@ -102,7 +102,7 @@ impl<T, U> DataFeed for CSVDataFeed<T, U>  where
             for bar in reader.deserialize() {
                 let bar: U = bar?;
 
-                    self.data.push(bar.to_datapoint(symbol.clone(), self.resolution))
+                self.data.push(bar.to_datapoint(symbol.clone(), self.resolution))
 
             };
         };

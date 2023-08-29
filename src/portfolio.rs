@@ -125,6 +125,10 @@ impl<T, F> Portfolio<T, F> where T: PortfolioNumberType, F: DataNumberType {
         self.holdings.get(&symbol)
     }
 
+    pub fn register_security(&mut self, symbol: SecuritySymbol, details: Security) {
+        self.registered_securities.insert(symbol, details);
+    }
+
 }
 
 #[cfg(test)]

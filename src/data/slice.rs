@@ -34,12 +34,12 @@ impl<T> Slice<T> where T: DataNumberType {
         }
     }
 
-    pub fn add_bar(&mut self, bar:TradeBar<T>) {
+    pub fn add_bar(&mut self, symbol: SecuritySymbol, bar:TradeBar<T>) {
         match &mut self.bars {
-            Some(bars) => bars.add(bar.symbol.clone(), bar),
+            Some(bars) => bars.add(symbol, bar),
             None => {
                 let mut tradebars = TradeBars::new();
-                tradebars.add(bar.symbol.clone(), bar);
+                tradebars.add(symbol, bar);
                 self.bars = Some(tradebars)
             },
         }
@@ -48,7 +48,7 @@ impl<T> Slice<T> where T: DataNumberType {
     pub fn add_datapoint(&mut self, point: DataPoint<T>) {
         match point.get_data() {
             DataType::Bar(x) => {
-                self.add_bar(x)
+                self.add_bar(point.get_symbol(), x)
             },
             _ => {}
         }
@@ -163,7 +163,7 @@ mod tests {
 
         let tradebar = setup_tradebar();
 
-        slice.add_bar(tradebar);
+        slice.add_bar(SecuritySymbol::Equity(String::from("AAPL")), tradebar);
 
         let expected = true;
 
@@ -186,7 +186,7 @@ mod tests {
         let expected = tradebar.clone();
 
         // Act
-        slice.add_bar(tradebar);
+        slice.add_bar(SecuritySymbol::Equity(String::from("AAPL")), tradebar);
 
         let result = slice.bars.unwrap().get_bar(&SecuritySymbol::Equity(String::from("AAPL"))).unwrap().clone();
 
@@ -229,7 +229,7 @@ mod tests {
         let expected = tradebar.clone();
 
         // Act
-        slice.add_bar(tradebar);
+        slice.add_bar(SecuritySymbol::Equity(String::from("AAPL")), tradebar);
 
         let result = slice.get_bar_by_symbol(&SecuritySymbol::Equity(String::from("AAPL"))).unwrap().clone();
 

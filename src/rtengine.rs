@@ -5,7 +5,8 @@ use std::sync::atomic::AtomicI64;
 use std::sync::Arc;
 use chrono::NaiveDateTime;
 
-use crate::SecuritySymbol;
+use crate::security::{Security, Equity};
+use crate::{SecuritySymbol, data};
 use crate::algorithm::Algo;
 use crate::broker::fill::PortfolioData;
 use crate::broker::fill::engine::FillEngine;
@@ -18,6 +19,7 @@ use crate::portfolio::{Portfolio, Holding};
 use crate::time::TimeSync;
 use crate::broker::{Broker, BacktestingBroker};
 use crate::broker::orders::{Order, Side, MarketOrder, FilledOrder, OrderError};
+use crate::security::Currency;
 
 pub struct RTEngine<T, U> where U: Broker + BackTester {
 
@@ -105,6 +107,22 @@ impl<T, U> RTEngine<T, U> where
 
     pub fn builder() -> EngineBuilder<T, U> {
         EngineBuilder::new()
+    }
+
+    pub fn add_equity(&mut self, symbol: &str) {
+        // TODO: Currently there is only support for US Stocks - add multi currency support.
+        self.add_security(
+            SecuritySymbol::Equity(symbol.to_owned()),
+            Security::Equity(
+                Equity::new(
+                    Currency::USD
+                )
+            )
+        )
+    }
+
+    pub fn add_security(&mut self, symbol: SecuritySymbol, details: Security) {
+        self.portfolio.register_security(symbol, details)
     }
 
     pub fn add_feed<D: DataFeedBuilder<NumberType = f64>>(&mut self, datafeed_builder: D)
