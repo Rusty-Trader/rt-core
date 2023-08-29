@@ -10,6 +10,7 @@ pub mod algorithm;
 mod time;
 pub mod portfolio;
 pub mod broker;
+pub mod security;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum SecuritySymbol {
@@ -46,6 +47,7 @@ impl PortfolioNumberType for f32 {}
 #[cfg(test)]
 pub mod test_utils {
     use crate::data::{DataPoint, DataType, tradebars::TradeBar, Resolution};
+    use crate::SecuritySymbol;
 
 
     pub fn setup_data_line_daily() -> Vec<DataPoint<f64>> {
@@ -64,7 +66,7 @@ pub mod test_utils {
                     1649030400000,
                     1649116800000,
                     false,
-                    "AAPL",
+                    SecuritySymbol::Equity(String::from("AAPL")),
                     Resolution::Day
                 )),
                 Resolution::Day
@@ -84,7 +86,7 @@ pub mod test_utils {
                     1649116800000,
                     1649203200000,
                     false,
-                    "AAPL",
+                    SecuritySymbol::Equity(String::from("AAPL")),
                     Resolution::Day
                 )),
                 Resolution::Day
@@ -104,7 +106,7 @@ pub mod test_utils {
                     1649203200000,
                     1649289600000,
                     false,
-                    "AAPL",
+                    SecuritySymbol::Equity(String::from("AAPL")),
                     Resolution::Day
                 )),
                 Resolution::Day
@@ -124,7 +126,7 @@ pub mod test_utils {
                     1649289600000,
                     1649376000000,
                     false,
-                    "AAPL",
+                    SecuritySymbol::Equity(String::from("AAPL")),
                     Resolution::Day
                 )),
                 Resolution::Day

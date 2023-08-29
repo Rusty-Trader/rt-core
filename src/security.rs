@@ -1,19 +1,19 @@
 
-
+pub enum Security {
+    Equity(Equity)
+}
 
 
 
 pub struct Equity {
-    currency: String
+    currency: Currency
 }
 
 
 
 
 
-
-
-pub enum Cash {
+pub enum Currency {
     AED,
     AFN,
     ALL,

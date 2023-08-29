@@ -10,12 +10,13 @@ use rt_core::data::slice::Slice;
 use rt_core::broker::{BacktestingBroker, Broker};
 use rt_core::broker::slippage::simple_model::SimpleSlippageModel;
 use rt_core::broker::fill::engine::BasicFillEngine;
+use rt_core::SecuritySymbol;
 
 #[test]
 fn test_on_data_backtesting() {
 
     // Arrange
-    let mut builder = CSVDataFeedBuilder::<f64, YahooFinanceTradeBar<f64>>::new("AAPL", Resolution::Day)
+    let mut builder = CSVDataFeedBuilder::<f64, YahooFinanceTradeBar<f64>>::new(SecuritySymbol::Equity(String::from("TS")), Resolution::Day)
         .with_path("tests/data/AAPL_yahoo_reduced.csv");
 
     let my_algo = MyAlgo {};

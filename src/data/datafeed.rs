@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fmt;
 use std::error;
 use csv::{Reader};
@@ -16,6 +17,7 @@ use super::data_providers::IntoDataPoint;
 use super::tradebars::TradeBar;
 use super::error::DataError;
 
+use crate::SecuritySymbol;
 use crate::rtengine::RunMode;
 
 
@@ -23,7 +25,7 @@ pub trait DataFeed {
 
     type NumberType: Clone;
 
-    fn get_name(&self) -> &str;
+    fn get_symbols(&self) -> &Vec<SecuritySymbol>;
     fn connect(&mut self, sender: Sender<DataPoint<Self::NumberType>>, mode: RunMode) -> Result<(), DataError>;
     fn send_backtest(&mut self) -> Result<(), DataError>;
     fn is_finished(&self) -> bool;
@@ -45,12 +47,12 @@ pub trait DataFeedBuilder {
 
     fn with_fill_sender(self, sender: Sender<DataPoint<Self::NumberType>>) -> Self;
 
-    fn get_name(&self) -> &str;
+    fn get_symbols(&self) -> &Vec<SecuritySymbol>;
 }
 
 pub struct CSVDataFeed<T, U> where T: Clone {
     path: PathBuf,
-    name: String,
+    symbols: Vec<SecuritySymbol>,
     data: Vec<DataPoint<T>>,
     time: Arc<AtomicI64>,
     resolution: Resolution,
@@ -88,17 +90,21 @@ impl<T, U> DataFeed for CSVDataFeed<T, U>  where
 
     type NumberType = T;
 
-    fn get_name(&self) -> &str {
-        self.name.as_str()
+    fn get_symbols(&self) -> &Vec<SecuritySymbol> {
+        &self.symbols
     }
 
     fn connect(&mut self, sender: Sender<DataPoint<Self::NumberType>>, mode: RunMode) -> Result<(), DataError> {
         
         let mut reader = Reader::from_path(self.path.to_owned())?;
 
-        for bar in reader.deserialize() {
-            let bar: U = bar?;
-                self.data.push(bar.to_datapoint(self.name.as_str(), self.resolution))
+        if let Some(symbol) = self.symbols.get(0) {
+            for bar in reader.deserialize() {
+                let bar: U = bar?;
+
+                    self.data.push(bar.to_datapoint(symbol.clone(), self.resolution))
+
+            };
         };
 
         if !self.is_orientated_correctly() {
@@ -140,7 +146,7 @@ impl<T, U> DataFeed for CSVDataFeed<T, U>  where
 pub struct CSVDataFeedBuilder<T, U> where T: Clone {
 
     path: PathBuf,
-    name: String,
+    symbols: Vec<SecuritySymbol>,
     data: Vec<DataPoint<T>>,
     time: Option<Arc<AtomicI64>>,
     resolution: Resolution,
@@ -154,10 +160,14 @@ pub struct CSVDataFeedBuilder<T, U> where T: Clone {
 
 impl<T, U> CSVDataFeedBuilder<T, U> where T: Clone {
 
-    pub fn new(name: &str, resolution: Resolution) -> CSVDataFeedBuilder<T, U> {
+    pub fn new(symbol: SecuritySymbol, resolution: Resolution) -> CSVDataFeedBuilder<T, U> {
+
+        let mut symbol_vec = Vec::new();
+        symbol_vec.push(symbol);
+
         CSVDataFeedBuilder {
             path: PathBuf::new(),
-            name: String::from(name),
+            symbols: symbol_vec,
             data: Vec::new(),
             time: None,
             resolution,
@@ -179,12 +189,12 @@ impl<T, U> CSVDataFeedBuilder<T, U> where T: Clone {
         }
     }
 
-    pub fn with_name(self, name: &str) -> Self {
-        Self {
-            name: name.to_string(),
-            ..self
-        }
-    }
+    // pub fn with_name(self, name: SecuritySymbol) -> Self {
+    //     Self {
+    //         symbols: name,
+    //         ..self
+    //     }
+    // }
 
     pub fn with_resolution(self, resolution: Resolution) -> Self {
         Self {
@@ -207,7 +217,7 @@ impl<T, U> DataFeedBuilder for CSVDataFeedBuilder<T, U> where T: Clone {
         // TODO: Add with_fill_sender
         Ok(CSVDataFeed {
             path: self.path,
-            name: self.name,
+            symbols: self.symbols,
             data: self.data,
             time: self.time
                 .ok_or(DataError::IncompleteDataFeedBuilder(format!("Data Feed requires a shared time with the Engine")))?,
@@ -248,8 +258,8 @@ impl<T, U> DataFeedBuilder for CSVDataFeedBuilder<T, U> where T: Clone {
         }
     }
 
-    fn get_name(&self) -> &str {
-        &self.name
+    fn get_symbols(&self) -> &Vec<SecuritySymbol> {
+        &self.symbols
     }
 
 }
@@ -280,7 +290,7 @@ mod tests {
                     27000,
                     28000,
                     false,
-                    "TS",
+                    SecuritySymbol::Equity(String::from("TS")),
                     Resolution::Day,
                 )),
                 period: Resolution::Day
@@ -300,7 +310,7 @@ mod tests {
 
         let mut feed = CSVDataFeed {
             path: PathBuf::new(),
-            name: String::from("TS"),
+            symbols: vec![SecuritySymbol::Equity(String::from("TS"))],
             data: setup_datapoint_vec(),
             time: Arc::new(AtomicI64::new(28000)),
             resolution: Resolution::Day,
@@ -329,7 +339,7 @@ mod tests {
 
         let mut feed = CSVDataFeed {
             path: PathBuf::new(),
-            name: String::from("TS"),
+            symbols: vec![SecuritySymbol::Equity(String::from("TS"))],
             data: setup_datapoint_vec(),
             time: Arc::new(AtomicI64::new(27000)),
             resolution: Resolution::Day,

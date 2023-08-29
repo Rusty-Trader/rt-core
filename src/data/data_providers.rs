@@ -2,6 +2,8 @@ use rust_decimal::{Decimal};
 use serde::{Serialize, Deserialize};
 use chrono::{NaiveDate, Days, Months, Datelike};
 
+use crate::SecuritySymbol;
+
 use super::{TradeBar, Resolution, DataPoint, DataType};
 
 pub trait IntoTradeBar {
@@ -15,7 +17,7 @@ pub trait IntoDataPoint {
 
     type NumberType: Clone;
 
-    fn to_datapoint(self, symbol: &str, period: Resolution) -> DataPoint<Self::NumberType>;
+    fn to_datapoint(self, symbol: SecuritySymbol, period: Resolution) -> DataPoint<Self::NumberType>;
 }
 
 
@@ -50,14 +52,13 @@ impl<T> IntoDataPoint for YahooFinanceTradeBar<T> where T: Clone {
 
     type NumberType = T;
 
-    fn to_datapoint(self, symbol: &str, resolution: Resolution) -> DataPoint<Self::NumberType> {
+    fn to_datapoint(self, symbol: SecuritySymbol, resolution: Resolution) -> DataPoint<Self::NumberType> {
 
         let mut tmp: TradeBar<Self::NumberType> = TradeBar::from(self);
         tmp.period = resolution;
-        tmp.symbol = String::from(symbol);
 
         DataPoint {
-            symbol: crate::SecuritySymbol::Equity(String::from(symbol)),
+            symbol,
             time: tmp.end_time,
             data: DataType::Bar(tmp),
             period: resolution
@@ -76,7 +77,7 @@ impl<T> From<YahooFinanceTradeBar<T>> for TradeBar<T> {
             start_time: item.date.and_hms_opt(0, 0, 0).unwrap().timestamp() as i64 * 1000,
             end_time: add_day_to_date(item.date).and_hms_opt(0, 0, 0).unwrap().timestamp() as i64 * 1000,
             is_fill_fwd: true,
-            symbol: String::from(""),
+            symbol: SecuritySymbol::Equity(String::from("")),
             period: item.period,
         }
     }

@@ -44,6 +44,7 @@ impl<T> DataPoint<T> where T: Clone {
         self.data.clone()
     }
 
+
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]

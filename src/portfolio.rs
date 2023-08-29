@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::hash::Hash;
 
+use crate::security::Security;
 use crate::{broker::orders::FilledOrder, PortfolioNumberType, DataNumberType, SecuritySymbol};
 use crate::broker::orders::{Side, OrderError};
 
@@ -49,17 +50,12 @@ pub struct Portfolio<T, F> where
 
     filled_orders: HashMap<String, Result<FilledOrder<F>, OrderError<F>>>,
 
-    // registered_securities: HashMap<SecuritySymbol, SecurityDetails>
+    registered_securities: HashMap<SecuritySymbol, Security>
 
 
 }
 
 
-pub enum SecurityDetails {
-
-    
-
-}
 
 
 impl<T, F> Portfolio<T, F> where T: PortfolioNumberType, F: DataNumberType {
@@ -69,6 +65,7 @@ impl<T, F> Portfolio<T, F> where T: PortfolioNumberType, F: DataNumberType {
             cash: <i8 as Into<T>>::into(1),
             holdings: HashMap::new(),
             filled_orders: HashMap::new(),
+            registered_securities: HashMap::new()
         }
     }
 

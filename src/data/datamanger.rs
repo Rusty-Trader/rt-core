@@ -8,7 +8,7 @@ use std::time::SystemTime;
 
 use std::time::Duration;
 
-use crate::SecuritySymbol;
+use crate::{SecuritySymbol, DataNumberType};
 use crate::rtengine::{RunMode, BackTester};
 use crate::time::TimeSync;
 use crate::utils::Merge;
@@ -79,7 +79,7 @@ impl<T> DataManager<T> where T: Clone {
         );
     }
 
-    pub fn get_slice(&mut self) -> Slice<T> {
+    pub fn get_slice(&mut self) -> Slice<T> where T: DataNumberType {
         // TODO: Add FillFwd
         let mut wait_time = Duration::new(0, 1000000);
 
@@ -89,12 +89,13 @@ impl<T> DataManager<T> where T: Clone {
 
         for val in self.receiver.try_iter() {
             if val.time > interval.0 && val.time <= interval.1 {
-                slice.merge(val.clone().into())
+                // slice.merge(val.clone().into())
+                slice.add_datapoint(val.clone())
             }
             
             // TODO: Move to next cycle
             if let Some(sender) = &self.fill_sender {
-                sender.send(val.into());
+                sender.send(val);
             }
         }
 
