@@ -3,6 +3,8 @@ use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::sync::atomic::AtomicI64;
 use std::sync::Arc;
+use std::rc::Rc;
+use std::cell::RefCell;
 use chrono::NaiveDateTime;
 
 use crate::security::{Security, Equity};
@@ -25,7 +27,7 @@ pub struct RTEngine<T, U> where U: Broker + BackTester {
 
     data_manager: DataManager<f64>,
 
-    portfolio: Portfolio<f64, f64>,
+    portfolio: Rc<RefCell<Portfolio<f64, f64>>>,
 
     broker: U,
 
@@ -78,7 +80,7 @@ impl<T, U> RTEngine<T, U> where
             let slice = self.data_manager.get_slice();
 
             // Get latest portfolio details to fill engine
-            self.broker.send_portfolio_data(PortfolioData{cash: self.portfolio.get_cash(), holdings: HashMap::new()});
+            self.broker.send_portfolio_data(PortfolioData{cash: self.portfolio.borrow_mut().get_cash(), holdings: HashMap::new()});
 
             // Process Fill Orders
             self.broker.next_cycle().unwrap();
@@ -122,7 +124,7 @@ impl<T, U> RTEngine<T, U> where
     }
 
     pub fn add_security(&mut self, symbol: SecuritySymbol, details: Security) {
-        self.portfolio.register_security(symbol, details)
+        self.portfolio.borrow_mut().register_security(symbol, details)
     }
 
     pub fn add_feed<D: DataFeedBuilder<NumberType = f64>>(&mut self, datafeed_builder: D)
@@ -135,7 +137,7 @@ impl<T, U> RTEngine<T, U> where
     }
 
     pub fn get_filled_orders(&mut self) -> Vec<Result<FilledOrder<f64>, OrderError<f64>>> {
-        self.portfolio.get_filled_orders().values().cloned().collect()
+        self.portfolio.borrow_mut().get_filled_orders().values().cloned().collect()
     }
 
     pub fn submit_market_order(&mut self, symbol: SecuritySymbol, volume: f64, side: Side) -> Result<(), Error> {
@@ -149,19 +151,19 @@ impl<T, U> RTEngine<T, U> where
     }
 
     pub fn set_cash(&mut self, cash: f64) {
-        self.portfolio.set_cash(cash.into())
+        self.portfolio.borrow_mut().set_cash(cash.into())
     }
 
     pub fn cash_balance(&self) -> f64 {
-        self.portfolio.get_cash()
+        self.portfolio.borrow_mut().get_cash()
     }
 
-    pub fn get_holding(&self, symbol: SecuritySymbol) -> Option<&Holding<f64>> {
-        self.portfolio.get_holding(symbol)
+    pub fn get_holding(&self, symbol: SecuritySymbol) -> Option<Holding<f64>> {
+        self.portfolio.borrow_mut().get_holding(symbol)
     }
 
     fn update_holdings(&mut self) {
-        self.portfolio.update_holdings(
+        self.portfolio.borrow_mut().update_holdings(
             self.broker.get_filled_orders()
         )
     }
@@ -219,7 +221,7 @@ impl<T, U> EngineBuilder<T, U> where
 
         Ok(RTEngine {
             data_manager: data_manager,
-            portfolio: Portfolio::new(),
+            portfolio: Rc::new(RefCell::new(Portfolio::new())),
             broker: broker,
             algo: self.algo
                 .ok_or(Error::IncompleteBuilder(format!("Algorithm must be added before engine can be built")))?,

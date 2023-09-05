@@ -5,7 +5,7 @@ use std::ops::Not;
 use orders::{Order, MarketOrder, FilledOrder};
 use fill::engine::FillEngine;
 
-use crate::DataNumberType;
+use crate::{DataNumberType, PortfolioNumberType};
 use crate::data::{DataPoint, self};
 use crate::portfolio::Portfolio;
 use crate::rtengine::BackTester;
@@ -204,8 +204,7 @@ pub enum BrokerMessage<T> where T: DataNumberType {
 
     FilledOrder(Result<FilledOrder<T>, OrderError<T>>),
 
-    PortfolioInfo(PortfolioData<T>)
-
+    PortfolioInfo(PortfolioData<T>),
     // OrderError(OrderError<T>)
 
 }
