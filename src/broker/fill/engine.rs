@@ -45,7 +45,7 @@ pub trait FillEngine {
         }
     }
 
-    fn check_funds(&self, order: MarketOrder<Self::NumberType>, price: Self::NumberType) -> Result<(), OrderError<Self::NumberType>>;
+    // fn check_funds(&self, order: MarketOrder<Self::NumberType>, price: Self::NumberType) -> Result<(), OrderError<Self::NumberType>>;
 
     fn fill_market_order(&self, order: MarketOrder<Self::NumberType>) -> Option<Result<FilledOrder<Self::NumberType>, OrderError<Self::NumberType>>>;
     
@@ -98,8 +98,37 @@ pub struct BasicFillEngine<T, U, F> where
 impl<T, U, F> BasicFillEngine<T, U, F>
     where T: DataNumberType,
     U: SlippageModel,
-    F: PortfolioNumberType {
+    F: PortfolioNumberType + Into<T> {
 
+    fn check_funds(&self, order: MarketOrder<T>, price: T) -> Result<(), OrderError<T>> {
+        // TODO: Add ability for account margin
+        // Check account has enough money
+        if let Some(portfolio) = &self.portfolio {
+            match order.get_side() {
+                Side::Buy => {
+                    if portfolio.borrow().get_cash().into() < (order.get_volume() * price) {
+                        return Err(OrderError::new(OrderType::MarketOrder(order), self.time.get_time(), "Insufficient Funds"))
+                    }
+                },
+                Side::Sell => {
+                    match portfolio.borrow().get_holding(order.get_symbol()) {
+                        Some(amnt) => {
+                            if amnt.get_volume().into() < order.get_volume() {
+                                return Err(OrderError::new(OrderType::MarketOrder(order), self.time.get_time(), "Insufficient Holdings"))
+                            }
+                        },
+                        None => {
+                            return Err(OrderError::new(OrderType::MarketOrder(order), self.time.get_time(), "No Holdings"))
+                        }
+                    }
+                }
+            }
+        } else {
+            panic!("No portfolio data available to fill engine")
+        }
+        Ok(())
+        //Err(OrderError::new(OrderType::MarketOrder(order), self.time.get_time(), "No Portfolio added to engine"))
+    }
 
 }
 
@@ -217,36 +246,6 @@ impl<T, U, F> FillEngine for BasicFillEngine<T, U, F> where
 
     fn connect_to_data(&mut self, data_receiver: Receiver<DataPoint<Self::NumberType>>) {
         self.data_receiver = Some(data_receiver);
-    }
-
-    fn check_funds(&self, order: MarketOrder<Self::NumberType>, price: Self::NumberType) -> Result<(), OrderError<Self::NumberType>> {
-        // TODO: Add ability for account margin
-        // Check account has enough money
-        if let Some(portfolio) = &self.portfolio {
-            match order.get_side() {
-                Side::Buy => {
-                    if portfolio.borrow().get_cash().into() < (order.get_volume() * price) {
-                        return Err(OrderError::new(OrderType::MarketOrder(order), self.time.get_time(), "Insufficient Funds"))
-                    }
-                },
-                Side::Sell => {
-                    match portfolio.borrow().get_holding(order.get_symbol()) {
-                        Some(amnt) => {
-                            if amnt.get_volume().into() < order.get_volume() {
-                                return Err(OrderError::new(OrderType::MarketOrder(order), self.time.get_time(), "Insufficient Holdings"))
-                            }
-                        },
-                        None => {
-                            return Err(OrderError::new(OrderType::MarketOrder(order), self.time.get_time(), "No Holdings"))
-                        }
-                    }
-                }
-            }
-        } else {
-            panic!("No portfolio data available to fill engine")
-        }
-        Ok(())
-        //Err(OrderError::new(OrderType::MarketOrder(order), self.time.get_time(), "No Portfolio added to engine"))
     }
 
     fn fill_market_order(&self, order: MarketOrder<Self::NumberType>) -> Option<Result<FilledOrder<Self::NumberType>, OrderError<Self::NumberType>>> {
@@ -369,6 +368,46 @@ mod tests {
         // Arrange
         let slippage_model = SimpleSlippageModel::new(0.01);
 
+        let mut portfolio: Portfolio<f64, f64> = Portfolio::new();
+
+        portfolio.set_cash(500000 as f64);
+
+        let mut basic_fill_engine = BasicFillEngine::new(0.01, slippage_model);
+
+        let mut data_line = setup_data_line_daily();
+
+        basic_fill_engine.add_datapoint(data_line.pop().unwrap());
+
+        basic_fill_engine.connect_to_engine(TimeSync::new(1000, Resolution::Day), Rc::new(RefCell::new(portfolio)));
+
+        let mut order = OrderType::MarketOrder(MarketOrder::new("1", SecuritySymbol::Equity(String::from("AAPL")), 1649289600000, 1000.0, Side::Buy));
+
+        // order.set_timestamp(1649289600000);
+
+        let expected = Ok(FilledOrder::new(
+            order.clone(),
+            1000,
+            1000.0,
+            171.160004 + 0.01 * 171.160004,
+            0.01,
+            false
+        ));
+
+        // Act
+        let result = basic_fill_engine.check_fill(order).unwrap();
+
+        // Assert
+        assert_eq!(result, expected)
+        
+    }
+
+
+    #[test]
+    fn test_basic_fill_engine_check_fill_insufficient_funds() {
+
+        // Arrange
+        let slippage_model = SimpleSlippageModel::new(0.01);
+
         let portfolio: Portfolio<f64, f64> = Portfolio::new();
 
         let mut basic_fill_engine = BasicFillEngine::new(0.01, slippage_model);
@@ -383,21 +422,15 @@ mod tests {
 
         // order.set_timestamp(1649289600000);
 
-        let expected = FilledOrder::new(
-            order.clone(),
-            1000,
-            1000.0,
-            171.160004 + 0.01 * 171.160004,
-            0.01,
-            false
-        );
+        let expected = Err(OrderError::new(order.clone(), 1000, "Insufficient Funds"));
 
         // Act
         let result = basic_fill_engine.check_fill(order).unwrap();
 
         // Assert
-        assert_eq!(result.unwrap(), expected)
+        assert_eq!(result, expected)
         
     }
+
 }
 
