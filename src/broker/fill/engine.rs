@@ -418,7 +418,7 @@ mod tests {
 
         basic_fill_engine.connect_to_engine(TimeSync::new(1000, Resolution::Day), Rc::new(RefCell::new(portfolio)));
 
-        let mut order = OrderType::MarketOrder(MarketOrder::new("1", SecuritySymbol::Equity(String::from("AAPL")), 1649289600000, 1000.0, Side::Buy));
+        let order = OrderType::MarketOrder(MarketOrder::new("1", SecuritySymbol::Equity(String::from("AAPL")), 1649289600000, 1000.0, Side::Buy));
 
         // order.set_timestamp(1649289600000);
 

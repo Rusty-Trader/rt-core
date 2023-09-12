@@ -1,10 +1,9 @@
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::sync::mpsc::{Sender, Receiver, channel};
+use std::sync::mpsc::Receiver;
 use std::collections::HashMap;
-use std::ops::Not;
 
-use orders::{Order, MarketOrder, FilledOrder};
+use orders::{Order, FilledOrder};
 use fill::engine::FillEngine;
 
 use crate::{DataNumberType, PortfolioNumberType};
@@ -13,10 +12,7 @@ use crate::portfolio::Portfolio;
 use crate::rtengine::BackTester;
 use crate::time::TimeSync;
 
-use self::error::BrokerError;
-use self::fill::PortfolioData;
 use self::orders::{OrderType, OrderError};
-use self::slippage::SlippageModel;
 
 pub mod orders;
 pub mod error;
@@ -66,8 +62,6 @@ pub struct BacktestingBroker<T, U, F> where
 
     open_orders: HashMap<String, OrderType<T>>,
 
-    filled_orders: Vec<Result<FilledOrder<T>, OrderError<T>>>,
-
     portfolio: Option<Rc<RefCell<Portfolio<F, T>>>>
 
 }
@@ -90,7 +84,6 @@ impl<T, U, F> BacktestingBroker<T, U, F> where
             // sender: broker_sender,
             // receiver: broker_receiver,
             open_orders:HashMap::new(),
-            filled_orders: Vec::new(),
             portfolio: None
         }
     }
