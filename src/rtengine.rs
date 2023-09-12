@@ -41,7 +41,7 @@ pub struct RTEngine<T, U> where U: Broker + BackTester {
 
 impl<T, U> RTEngine<T, U> where
     T: Algo<NumberType = f64>,
-    U: Broker<NumberType = f64> + BackTester
+    U: Broker<NumberType = f64, PortfolioNumberType = f64> + BackTester
     {
 
 
@@ -80,13 +80,13 @@ impl<T, U> RTEngine<T, U> where
             let slice = self.data_manager.get_slice();
 
             // Get latest portfolio details to fill engine
-            self.broker.send_portfolio_data(PortfolioData{cash: self.portfolio.borrow_mut().get_cash(), holdings: HashMap::new()});
+            // self.broker.send_portfolio_data(PortfolioData{cash: self.portfolio.borrow_mut().get_cash(), holdings: HashMap::new()});
 
             // Process Fill Orders
             self.broker.next_cycle().unwrap();
 
             // Update portfolio information
-            self.update_holdings();
+            // self.update_holdings();
 
             // Pass Slice to Algorithm
 
@@ -162,11 +162,11 @@ impl<T, U> RTEngine<T, U> where
         self.portfolio.borrow_mut().get_holding(symbol)
     }
 
-    fn update_holdings(&mut self) {
-        self.portfolio.borrow_mut().update_holdings(
-            self.broker.get_filled_orders()
-        )
-    }
+    // fn update_holdings(&mut self) {
+    //     self.portfolio.borrow_mut().update_holdings(
+    //         self.broker.get_filled_orders()
+    //     )
+    // }
 
 }
 
@@ -189,7 +189,7 @@ pub struct EngineBuilder<T, U> where
 
 impl<T, U> EngineBuilder<T, U> where
     T: Algo,
-    U: Broker<NumberType = f64> {
+    U: Broker<NumberType = f64, PortfolioNumberType = f64> {
 
     pub fn new() -> Self {
         Self {
@@ -211,17 +211,19 @@ impl<T, U> EngineBuilder<T, U> where
             .ok_or(Error::IncompleteBuilder(format!("Engine must have a Run Mode")))?);
             // .ok_or(Error::IncompleteBuilder(format!("Engine must have a Run Mode")))?
 
+        let portfolio: Rc<RefCell<Portfolio<f64, f64>>> = Rc::new(RefCell::new(Portfolio::new()));
+
         // &mut self.broker.map(|x| x.connect_to_data(data_manager.with_fill_sender()));
 
         let mut broker = self.broker.ok_or(Error::IncompleteBuilder(format!("Broker must be specified")))?;
 
         broker.connect_to_data(data_manager.with_fill_sender());
 
-        broker.connect(time_sync.clone());
+        broker.connect(time_sync.clone(), portfolio.clone());
 
         Ok(RTEngine {
             data_manager: data_manager,
-            portfolio: Rc::new(RefCell::new(Portfolio::new())),
+            portfolio: portfolio,
             broker: broker,
             algo: self.algo
                 .ok_or(Error::IncompleteBuilder(format!("Algorithm must be added before engine can be built")))?,

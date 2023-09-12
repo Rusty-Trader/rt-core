@@ -12,6 +12,7 @@ pub enum Holding<T> where T: PortfolioNumberType {
     Equity(T)
 }
 
+
 impl<T> Holding<T> where T: PortfolioNumberType {
 
     fn add(&mut self, volume: T) {
@@ -37,6 +38,13 @@ impl<T> Holding<T> where T: PortfolioNumberType {
             }
         }
     }
+
+    pub fn get_volume(&self) -> T {
+        match self {
+            Self::Equity(amnt) => *amnt
+        }
+    }
+
 }
 
 pub struct Portfolio<T, F> where
@@ -69,42 +77,41 @@ impl<T, F> Portfolio<T, F> where T: PortfolioNumberType, F: DataNumberType {
         }
     }
 
-    pub fn update_holdings(&mut self, orders: Vec<Result<FilledOrder<F>, OrderError<F>>>) where
+    pub fn update_holding(&mut self, order: Result<FilledOrder<F>, OrderError<F>>) where
         F: DataNumberType + Into<T> {
 
-        for order in orders {
-            match &order {
-                Ok(y) => {
-                    match self.holdings.get_mut(&y.get_symbol()) {
-                        Some(x) => {
-                            match y.get_side() {
-                                Side::Buy => {
-                                    x.add(y.get_volume().into());
-                                    self.cash -= y.get_cost().into() + y.get_commission().into();
-                                },
-                                Side::Sell => {
-                                    x.sub(y.get_volume().into());
-                                    self.cash += y.get_cost().into() - y.get_commission().into();
-                                }   
-                            }
-                        },
-                        None => {
-                            match y.get_side() {
-                                Side::Buy => {
-                                    self.holdings.insert(y.get_symbol(), Holding::new(y.get_symbol(), y.get_volume().into()));
-                                    self.cash -= y.get_cost().into() + y.get_commission().into();
-                                },
-                                Side::Sell => {}   
-                            }  
+        // for order in orders {
+        match order.clone() {
+            Ok(y) => {
+                match self.holdings.get_mut(&y.get_symbol()) {
+                    Some(x) => {
+                        match y.get_side() {
+                            Side::Buy => {
+                                x.add(y.get_volume().into());
+                                self.cash -= y.get_cost().into() + y.get_commission().into();
+                            },
+                            Side::Sell => {
+                                x.sub(y.get_volume().into());
+                                self.cash += y.get_cost().into() - y.get_commission().into();
+                            }   
                         }
+                    },
+                    None => {
+                        match y.get_side() {
+                            Side::Buy => {
+                                self.holdings.insert(y.get_symbol(), Holding::new(y.get_symbol(), y.get_volume().into()));
+                                self.cash -= y.get_cost().into() + y.get_commission().into();
+                            },
+                            Side::Sell => {}   
+                        }  
                     }
-
-                    self.filled_orders.insert(y.get_id(), order.clone());
-                
-                },
-                Err(e) => {
-                    self.filled_orders.insert(e.get_id(), order.clone());
                 }
+
+                self.filled_orders.insert(y.get_id(), order.clone());
+            
+            },
+            Err(e) => {
+                self.filled_orders.insert(e.get_id(), order.clone());
             }
         }
     }
@@ -146,15 +153,15 @@ mod tests {
 
         let order: MarketOrder<f64> = MarketOrder::new("1", SecuritySymbol::Equity(String::from("Test")), 1000, 1000.0, Side::Buy);
 
-        let mut orders: Vec<Result<FilledOrder<f64>, _>> = Vec::new();
-        orders.push(Ok(FilledOrder::new(
+        // let mut orders: Vec<Result<FilledOrder<f64>, _>> = Vec::new();
+        let filled_order = Ok(FilledOrder::new(
             OrderType::MarketOrder(order),
             1000,
             1000.0,
             6.0,
             1.0,
             false)
-        ));
+        );
 
 
         let expected_cash = 3999.0;
@@ -163,7 +170,7 @@ mod tests {
 
 
         // Act
-        portfolio.update_holdings(orders);
+        portfolio.update_holding(filled_order);
         let result_cash = portfolio.cash;
         let result_holdings = portfolio.holdings.get(&SecuritySymbol::Equity(String::from("Test"))).unwrap();
 
@@ -190,24 +197,24 @@ mod tests {
 
         let order: MarketOrder<f64> = MarketOrder::new("1", SecuritySymbol::Equity(String::from("Test")), 1000, 1000.0, Side::Sell);
 
-        let mut orders: Vec<Result<FilledOrder<f64>, _>> = Vec::new();
+        // let mut orders: Vec<Result<FilledOrder<f64>, _>> = Vec::new();
 
-        let filled_order = FilledOrder::new(
+        let filled_order = Ok(FilledOrder::new(
             OrderType::MarketOrder(order),
             1000,
             1000.0,
             6.0,
             1.0,
             false
-        );
+        ));
 
-        orders.push(Ok(filled_order));
+        // orders.push(Ok(filled_order));
 
         let expected_cash = 5999.0;
         let expected_holdings = &Holding::Equity(0.0);
 
         // Act
-        portfolio.update_holdings(orders);
+        portfolio.update_holding(filled_order);
         let result_cash = portfolio.cash;
         let result_holdings = portfolio.holdings.get(&SecuritySymbol::Equity(String::from("Test"))).unwrap();
 
