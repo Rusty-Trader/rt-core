@@ -1,27 +1,21 @@
-
-use std::collections::HashMap;
-use std::marker::PhantomData;
 use std::sync::atomic::AtomicI64;
 use std::sync::Arc;
 use std::rc::Rc;
 use std::cell::RefCell;
 use chrono::NaiveDateTime;
 
-use crate::security::{Security, Equity};
-use crate::{SecuritySymbol, data};
+use crate::security::{Security, SecuritySymbol};
 use crate::algorithm::Algo;
-use crate::broker::fill::PortfolioData;
 use crate::broker::fill::engine::FillEngine;
-use crate::data::{datafeed, Resolution};
+use crate::data::{deserialize_symbol_properties, Resolution};
 use crate::data::datamanger::DataManager;
 use crate::data::datafeed::DataFeed;
 use crate::error::Error;
 use crate::data::datafeed::DataFeedBuilder;
-use crate::portfolio::{Portfolio, Holding};
+use crate::portfolio::{Holding, Portfolio};
 use crate::time::TimeSync;
-use crate::broker::{Broker, BacktestingBroker};
-use crate::broker::orders::{Order, Side, MarketOrder, FilledOrder, OrderError};
-use crate::security::Currency;
+use crate::broker::Broker;
+use crate::broker::orders::{FilledOrder, MarketOrder, OrderError, Side};
 
 pub struct RTEngine<T, U> where U: Broker + BackTester {
 
@@ -111,19 +105,52 @@ impl<T, U> RTEngine<T, U> where
         EngineBuilder::new()
     }
 
-    pub fn add_equity(&mut self, symbol: &str) {
-        // TODO: Currently there is only support for US Stocks - add multi currency support.
-        self.add_security(
-            SecuritySymbol::Equity(symbol.to_owned()),
-            Security::Equity(
-                Equity::new(
-                    Currency::USD
-                )
-            )
-        )
+    // pub fn add_equity(&mut self, symbol: &str) {
+    //     // TODO: Currently there is only support for US Stocks - add multi currency support.
+    //     self.add_security(
+    //         SecuritySymbol::Equity(symbol.to_owned()),
+    //         Security::Equity(
+    //             Equity::new(
+    //                 Currency::USD
+    //             )
+    //         )
+    //     )
+    // }
+
+    pub fn register_security(&mut self, security: SecuritySymbol, market: &str) {
+
+        if !self.data_manager.symbol_exists(security.clone()) {
+            panic!("No data source found in Data Manager for {}", security.symbol())
+        }
+
+        let result = deserialize_symbol_properties();
+
+        match result {
+            Ok(symbols) => {
+                match symbols.into_iter().filter(|r| r.symbol == security.symbol()).collect::<Vec<_>>().first() {
+                    Some(properties) => {
+                        self.register_custom_security(security, properties.to_security())
+                    },
+                    None => {
+                        match symbols.into_iter().filter(|r| (r.symbol == "*") &
+                            (r.market == market) & (r.security_type == security.security_type())).first() {
+                            Some(properties) => {
+                                self.register_custom_security(security, properties.to_security())
+                            }
+                            None => {
+                                panic!("Could not register {}", security.symbol())
+                            }
+                        }
+                    }
+                }
+            },
+            Err(e) => {
+                panic!("Could not load security database file")
+            }
+        }
     }
 
-    pub fn add_security(&mut self, symbol: SecuritySymbol, details: Security) {
+    pub fn register_custom_security(&mut self, symbol: SecuritySymbol, details: Security) {
         self.portfolio.borrow_mut().register_security(symbol, details)
     }
 

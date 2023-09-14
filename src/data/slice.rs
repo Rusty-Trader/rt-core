@@ -1,9 +1,10 @@
 use std::fmt;
 use chrono::NaiveDateTime;
 
-use super::{tradebars::{TradeBars, TradeBar}, DataPoint, DataType};
+use super::{DataPoint, DataType, tradebars::{TradeBar, TradeBars}};
 
-use crate::{utils::Merge, SecuritySymbol, DataNumberType};
+use crate::{DataNumberType, utils::Merge};
+use crate::security::SecuritySymbol;
 
 #[derive(Debug, Clone)]
 pub struct Slice<T> {

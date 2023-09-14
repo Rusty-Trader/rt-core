@@ -6,11 +6,12 @@ pub mod error;
 pub mod slice;
 
 use tradebars::TradeBar;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use csv::Reader;
 use std::include_bytes;
 
-use crate::{SecuritySymbol, security::{Currency, SecurityType}};
+use crate::{security::{Currency, SecurityType}};
+use crate::security::{Equity, Security, SecuritySymbol};
 
 use self::error::DataError;
 
@@ -77,18 +78,34 @@ pub trait FillFwd {
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct DataSymbolProperties {
-    market: String,
-    symbol: String,
+    pub market: String,
+    pub symbol: String,
     #[serde(rename(deserialize = "type"))]
-    security_type: SecurityType,
-    description: String,
-    quote_currency: Currency,
-    contract_multiplier: f64,
-    minimum_price_variation: f64,
-    lot_size: f64,
-    market_ticker: Option<String>,
-    minimum_order_size: Option<f64>,
-    price_magnifier: Option<f64>
+    pub security_type: SecurityType,
+    pub description: String,
+    pub quote_currency: Currency,
+    pub contract_multiplier: f64,
+    pub minimum_price_variation: f64,
+    pub lot_size: f64,
+    pub market_ticker: Option<String>,
+    pub minimum_order_size: Option<f64>,
+    pub price_magnifier: Option<f64>
+}
+
+impl DataSymbolProperties {
+
+    pub fn to_security(self) -> Security {
+        match self.security_type {
+            SecurityType::Equity => {
+                Security::Equity(
+                    Equity::new(
+                        self.quote_currency,
+                        self.lot_size
+                    )
+                )
+            }
+        }
+    }
 }
 
 pub fn deserialize_symbol_properties() -> Result<Vec<DataSymbolProperties>, DataError> {

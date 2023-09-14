@@ -1,15 +1,12 @@
-use std::collections::{VecDeque, HashMap};
+use std::collections::{HashMap, VecDeque};
 use std::hash::Hash;
-use std::sync::atomic::AtomicI64;
-use std::sync::Arc;
-use std:: sync::mpsc::{channel, Sender, Receiver};
+use std:: sync::mpsc::{channel, Receiver, Sender};
 use std::default::Default;
-use std::time::SystemTime;
-
 use std::time::Duration;
 
-use crate::{SecuritySymbol, DataNumberType};
-use crate::rtengine::{RunMode, BackTester};
+use crate::DataNumberType;
+use crate::rtengine::{BackTester, RunMode};
+use crate::security::SecuritySymbol;
 use crate::time::TimeSync;
 use crate::utils::Merge;
 
@@ -28,7 +25,7 @@ pub struct DataManager<T> where T: Clone {
 
     feeds: HashMap<String, Box<dyn DataFeed<NumberType = T>>>,
 
-    sender: Sender<DataPoint<T>>,
+    sender: Sender<DataPoint<T>>, // TODO: Needs to be a HashMap with key per feed
 
     receiver: Receiver<DataPoint<T>>,
 
@@ -132,6 +129,10 @@ impl<T> DataManager<T> where T: Clone {
         Ok(())
     }
 
+    pub fn symbol_exists(&self, symbol: SecuritySymbol) -> bool {
+        self.securities.contains_key(&symbol)
+    }
+
 }
 
 // impl<T> BackTester for DataManager<T> where T: Clone {
@@ -147,8 +148,6 @@ impl<T> DataManager<T> where T: Clone {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[test]
     fn it_works() {
 

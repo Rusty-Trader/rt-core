@@ -1,21 +1,18 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
-use std::sync::mpsc::{Sender, Receiver};
-use std::ops::{Mul, Add, Sub};
+use std::sync::mpsc::Receiver;
+use std::ops::{Add, Mul, Sub};
 
-use super::super::{Order, BrokerMessage};
+use super::super::{BrokerMessage, Order};
 use super::super::orders::Side;
 use super::super::slippage::SlippageModel;
-use super::super::error::BrokerError;
-use super::PortfolioData;
-
 use crate::portfolio::Portfolio;
-use crate::{DataNumberType, SecuritySymbol, PortfolioNumberType};
-use crate::broker::orders::{FilledOrder, OrderType, MarketOrder, OrderError};
-use crate::data::DataType;
+use crate::{DataNumberType, PortfolioNumberType};
+use crate::broker::orders::{FilledOrder, MarketOrder, OrderError, OrderType};
 use crate::time::TimeSync;
 use crate::{data::DataPoint, rtengine::BackTester};
+use crate::security::SecuritySymbol;
 use crate::utils::Merge;
 
 
@@ -357,9 +354,7 @@ impl<T, U, F> FillEngine for BasicFillEngine<T, U, F> where
 mod tests {
     use super::*;
 
-    use std::sync::mpsc::channel;
-
-    use crate::{broker::slippage::simple_model::SimpleSlippageModel, data::{tradebars::TradeBar, Resolution}};
+    use crate::{broker::slippage::simple_model::SimpleSlippageModel, data::Resolution};
     use crate::test_utils::setup_data_line_daily;
     
     #[test]

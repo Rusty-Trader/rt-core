@@ -10,7 +10,7 @@ use rt_core::data::slice::Slice;
 use rt_core::broker::{BacktestingBroker, Broker};
 use rt_core::broker::slippage::simple_model::SimpleSlippageModel;
 use rt_core::broker::fill::engine::BasicFillEngine;
-use rt_core::SecuritySymbol;
+use rt_core::security::SecuritySymbol;
 
 #[test]
 fn test_on_data_backtesting() {
@@ -66,10 +66,10 @@ impl Algo for MyAlgo {
         println!("{}", slice);
         println!("{}", engine.get_time());
         if engine.get_time() == 1649376000000 {
-            engine.submit_market_order(rt_core::SecuritySymbol::Equity(String::from("AAPL")), 1000.0, Side::Buy);
+            engine.submit_market_order(rt_core::security::SecuritySymbol::Equity(String::from("AAPL")), 1000.0, Side::Buy);
         }
         println!("{:?}", engine.cash_balance());
-        println!("{:?}", engine.get_holding(rt_core::SecuritySymbol::Equity(String::from("AAPL"))))
+        println!("{:?}", engine.get_holding(rt_core::security::SecuritySymbol::Equity(String::from("AAPL"))))
         
     }
 }

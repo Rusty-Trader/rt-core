@@ -4,7 +4,7 @@ use std::ops::Index;
 use chrono::NaiveDateTime;
 
 use super::{Resolution, FillFwd};
-use crate::SecuritySymbol;
+use crate::security::SecuritySymbol;
 use crate::utils::Merge;
 
 #[derive(Debug, Clone)]
@@ -142,7 +142,7 @@ impl<T: fmt::Debug> fmt::Display for TradeBar<T> {
 mod tests {
     use super::*;
     use rust_decimal_macros::dec;
-    use crate::SecuritySymbol;
+    use crate::security::SecuritySymbol;
 
     #[test]
     fn add() {

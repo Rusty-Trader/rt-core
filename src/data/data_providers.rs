@@ -2,7 +2,7 @@ use rust_decimal::{Decimal};
 use serde::{Serialize, Deserialize};
 use chrono::{NaiveDate, Days, Months, Datelike};
 
-use crate::SecuritySymbol;
+use crate::security::SecuritySymbol;
 
 use super::{TradeBar, Resolution, DataPoint, DataType};
 

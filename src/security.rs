@@ -13,18 +13,47 @@ pub enum Security {
     Equity(Equity)
 }
 
+impl Security {
 
-#[derive(Debug, Deserialize)]
-pub struct Equity {
-    currency: Currency
+    pub fn security_type(&self) -> SecurityType {
+        match self {
+            Self::Equity(_) => SecurityType::Equity,
+        }
+    }
 }
 
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum SecuritySymbol {
+    Equity(String)
+}
+
+impl SecuritySymbol {
+    pub fn symbol(&self) -> String {
+        match self {
+            Self::Equity(x) => x.clone(),
+        }
+    }
+
+    pub fn security_type(&self) -> SecurityType {
+        match self {
+            Self::Equity(_) => SecurityType::Equity,
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Equity {
+    currency: Currency,
+    lot_size: f64
+}
+
 impl Equity {
 
-    pub fn new(currency: Currency) -> Self {
+    pub fn new(currency: Currency, lot_size: f64) -> Self {
         Self {
-            currency
+            currency,
+            lot_size
         }
     }
 
@@ -32,9 +61,6 @@ impl Equity {
         self.currency
     }
 }
-
-
-
 
 #[derive(Debug, Clone, Copy, Deserialize)]
 pub enum Currency {

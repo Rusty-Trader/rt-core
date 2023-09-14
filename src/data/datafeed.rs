@@ -17,7 +17,7 @@ use super::data_providers::IntoDataPoint;
 use super::tradebars::TradeBar;
 use super::error::DataError;
 
-use crate::SecuritySymbol;
+use crate::security::SecuritySymbol;
 use crate::rtengine::RunMode;
 
 
@@ -279,7 +279,7 @@ mod tests {
 
         data.push(
             DataPoint { 
-                symbol: crate::SecuritySymbol::Equity(String::from("TS")), 
+                symbol: crate::security::SecuritySymbol::Equity(String::from("TS")),
                 time: 28000, 
                 data: DataType::Bar(TradeBar::new(
                     1000.0,

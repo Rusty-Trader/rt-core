@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
-use crate::security::Security;
-use crate::{broker::orders::FilledOrder, PortfolioNumberType, DataNumberType, SecuritySymbol};
-use crate::broker::orders::{Side, OrderError};
+use crate::security::{Security, SecuritySymbol};
+use crate::{broker::orders::FilledOrder, DataNumberType, PortfolioNumberType};
+use crate::broker::orders::{OrderError, Side};
 
 
 /// A Holding stores information about the security that a portfolio contains.
