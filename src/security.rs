@@ -1,14 +1,14 @@
 use serde::Deserialize;
 
 
-#[derive(Debug, Deserialize, Clone, Copy)]
+#[derive(Debug, Deserialize, Clone, Copy, PartialEq, Eq)]
 pub enum SecurityType {
     #[serde(rename(deserialize = "equity"))]
     Equity,
 }
 
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, PartialEq)]
 pub enum Security {
     Equity(Equity)
 }
@@ -42,18 +42,18 @@ impl SecuritySymbol {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, PartialEq)]
 pub struct Equity {
     currency: Currency,
-    lot_size: f64
+    minimum_price_variation: f64
 }
 
 impl Equity {
 
-    pub fn new(currency: Currency, lot_size: f64) -> Self {
+    pub fn new(currency: Currency, minimum_price_variation: f64) -> Self {
         Self {
             currency,
-            lot_size
+            minimum_price_variation
         }
     }
 
@@ -62,7 +62,7 @@ impl Equity {
     }
 }
 
-#[derive(Debug, Clone, Copy, Deserialize)]
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
 pub enum Currency {
     AED,
     AFN,

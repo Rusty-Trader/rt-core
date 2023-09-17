@@ -7,7 +7,7 @@ use chrono::NaiveDateTime;
 use crate::security::{Security, SecuritySymbol};
 use crate::algorithm::Algo;
 use crate::broker::fill::engine::FillEngine;
-use crate::data::{deserialize_symbol_properties, Resolution};
+use crate::data::{DataSymbolProperties, deserialize_symbol_properties, Resolution};
 use crate::data::datamanger::DataManager;
 use crate::data::datafeed::DataFeed;
 use crate::error::Error;
@@ -119,23 +119,23 @@ impl<T, U> RTEngine<T, U> where
 
     pub fn register_security(&mut self, security: SecuritySymbol, market: &str) {
 
-        if !self.data_manager.symbol_exists(security.clone()) {
-            panic!("No data source found in Data Manager for {}", security.symbol())
-        }
+        // if !self.data_manager.symbol_exists(security.clone()) {
+        //     panic!("No data source found in Data Manager for {}", security.symbol())
+        // }
 
         let result = deserialize_symbol_properties();
 
         match result {
             Ok(symbols) => {
-                match symbols.into_iter().filter(|r| r.symbol == security.symbol()).collect::<Vec<_>>().first() {
+                match symbols.clone().into_iter().filter(|r| r.symbol == security.symbol()).collect::<Vec<_>>().first() {
                     Some(properties) => {
-                        self.register_custom_security(security, properties.to_security())
+                        self.register_custom_security(security, properties.clone().to_security())
                     },
                     None => {
                         match symbols.into_iter().filter(|r| (r.symbol == "*") &
-                            (r.market == market) & (r.security_type == security.security_type())).first() {
+                            (r.market == market) & (r.security_type == security.security_type())).collect::<Vec<DataSymbolProperties>>().first() {
                             Some(properties) => {
-                                self.register_custom_security(security, properties.to_security())
+                                self.register_custom_security(security, properties.clone().to_security())
                             }
                             None => {
                                 panic!("Could not register {}", security.symbol())
@@ -320,4 +320,65 @@ pub enum RunMode {
     PaperTrade,
     BackTest,
     UnitTest
+}
+
+
+#[cfg(test)]
+mod tests {
+    use chrono::NaiveDate;
+    use crate::broker::BacktestingBroker;
+    use crate::broker::fill::engine::BasicFillEngine;
+    use crate::broker::slippage::simple_model::SimpleSlippageModel;
+    use super::*;
+
+    use crate::rtengine::RTEngine;
+    use crate::data::datamanger::DataManager;
+    use crate::data::slice::Slice;
+    use crate::security::{Currency, Equity};
+
+    #[derive(Clone)]
+    struct TestAlgo {}
+
+    impl Algo for TestAlgo {
+        
+        type NumberType = f64;
+        fn on_data<T, U>(&self, slice: Slice<Self::NumberType>, engine: &mut RTEngine<T, U>) where
+            T: Algo<NumberType=Self::NumberType>,
+            U: Broker<NumberType=Self::NumberType, PortfolioNumberType=Self::NumberType> + BackTester {
+        }
+    }
+
+    #[test]
+    fn test_register_security_equity() {
+
+        // Arrange
+        let start_date = NaiveDate::from_ymd_opt(2022, 4, 4).unwrap().and_hms_opt(0, 0, 0).unwrap();
+
+        let algo = TestAlgo {};
+
+        let slippage = SimpleSlippageModel::new(0.01);
+
+        let fill_engine = BasicFillEngine::new(0.01, slippage);
+
+        let broker = BacktestingBroker::new(0.01, fill_engine);
+
+        let mut engine = RTEngine::builder()
+            .with_mode(crate::rtengine::RunMode::UnitTest)
+            .with_algo(algo)
+            .with_resolution(Resolution::Day)
+            .with_start_time(start_date)
+            .with_broker(broker)
+            .build().unwrap();
+
+        let expected = &Security::Equity(Equity::new(Currency::USD, 0.01));
+        // Act
+
+        engine.register_security(SecuritySymbol::Equity(String::from("AAPL")), "usa");
+
+        let binding = engine.portfolio.borrow();
+        let result = binding.security_details(SecuritySymbol::Equity(String::from("AAPL"))).unwrap();
+
+        // Assert
+        assert_eq!(result, expected)
+    }
 }

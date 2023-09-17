@@ -100,7 +100,7 @@ impl DataSymbolProperties {
                 Security::Equity(
                     Equity::new(
                         self.quote_currency,
-                        self.lot_size
+                        self.minimum_price_variation
                     )
                 )
             }

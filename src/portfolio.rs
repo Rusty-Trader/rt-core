@@ -135,6 +135,14 @@ impl<T, F> Portfolio<T, F> where T: PortfolioNumberType, F: DataNumberType {
         self.registered_securities.insert(symbol, details);
     }
 
+    pub fn security_details(&self, symbol: SecuritySymbol) -> Option<&Security> {
+        self.registered_securities.get(&symbol)
+    }
+
+    pub fn is_registered(&self, symbol: SecuritySymbol) -> bool {
+        self.registered_securities.contains_key(&symbol)
+    }
+
 }
 
 #[cfg(test)]
