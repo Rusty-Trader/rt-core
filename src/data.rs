@@ -6,12 +6,18 @@ pub mod error;
 pub mod slice;
 
 use tradebars::TradeBar;
+use serde::{Deserialize, Serialize};
+use csv::Reader;
+use std::include_bytes;
 
-use crate::Security;
+use crate::{security::{Currency, SecurityType}};
+use crate::security::{Equity, Security, SecuritySymbol};
+
+use self::error::DataError;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct DataPoint<T: Clone> {
-    symbol: Security,
+    symbol: SecuritySymbol,
     time: i64,
     data: DataType<T>,
     period: Resolution,
@@ -19,7 +25,7 @@ pub struct DataPoint<T: Clone> {
 
 impl<T> DataPoint<T> where T: Clone {
 
-    pub fn new(symbol: Security, time: i64, data: DataType<T>, period: Resolution) -> Self {
+    pub fn new(symbol: SecuritySymbol, time: i64, data: DataType<T>, period: Resolution) -> Self {
         Self { 
             symbol,
             time,
@@ -28,7 +34,7 @@ impl<T> DataPoint<T> where T: Clone {
         }
     }
     
-    pub fn get_symbol(&self) -> Security {
+    pub fn get_symbol(&self) -> SecuritySymbol {
         self.symbol.clone()
     }
 
@@ -43,6 +49,7 @@ impl<T> DataPoint<T> where T: Clone {
     pub fn get_data(&self) -> DataType<T> {
         self.data.clone()
     }
+
 
 }
 
@@ -66,4 +73,74 @@ pub enum Resolution {
 
 pub trait FillFwd {
     fn fill_fwd(self) -> Self;
+}
+
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct DataSymbolProperties {
+    pub market: String,
+    pub symbol: String,
+    #[serde(rename(deserialize = "type"))]
+    pub security_type: SecurityType,
+    pub description: String,
+    pub quote_currency: Currency,
+    pub contract_multiplier: f64,
+    pub minimum_price_variation: f64,
+    pub lot_size: f64,
+    pub market_ticker: Option<String>,
+    pub minimum_order_size: Option<f64>,
+    pub price_magnifier: Option<f64>
+}
+
+impl DataSymbolProperties {
+
+    pub fn to_security(self) -> Security {
+        match self.security_type {
+            SecurityType::Equity => {
+                Security::Equity(
+                    Equity::new(
+                        self.quote_currency,
+                        self.minimum_price_variation
+                    )
+                )
+            }
+        }
+    }
+}
+
+pub fn deserialize_symbol_properties() -> Result<Vec<DataSymbolProperties>, DataError> {
+
+    let bytes = include_bytes!("data/data-symbol-properties.csv");
+
+    let mut tmp: Vec<DataSymbolProperties> = Vec::new();
+
+    let mut reader = Reader::from_reader(&bytes[..]);
+
+    for property in reader.deserialize() {
+        
+        tmp.push(property?);
+    }
+
+    Ok(tmp)
+
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_deserialize_symbol_properties() {
+
+        // Arrange
+
+        // Act
+        let result = deserialize_symbol_properties();
+        println!("{:?}", result);
+        // Assert
+        // assert_ne!()
+
+    }
+
 }

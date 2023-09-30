@@ -10,12 +10,13 @@ use rt_core::data::slice::Slice;
 use rt_core::broker::{BacktestingBroker, Broker};
 use rt_core::broker::slippage::simple_model::SimpleSlippageModel;
 use rt_core::broker::fill::engine::BasicFillEngine;
+use rt_core::security::SecuritySymbol;
 
 #[test]
 fn test_on_data_backtesting() {
 
     // Arrange
-    let mut builder = CSVDataFeedBuilder::<f64, YahooFinanceTradeBar<f64>>::new("AAPL", Resolution::Day)
+    let mut builder = CSVDataFeedBuilder::<f64, YahooFinanceTradeBar<f64>>::new(SecuritySymbol::Equity(String::from("AAPL")), "usa",Resolution::Day)
         .with_path("tests/data/AAPL_yahoo_reduced.csv");
 
     let my_algo = MyAlgo {};
@@ -60,15 +61,15 @@ impl Algo for MyAlgo {
 
     fn on_data<T, U>(&self, slice: Slice<Self::NumberType>, engine: &mut RTEngine<T, U>) where 
     T: Algo<NumberType = Self::NumberType>,
-    U: Broker<NumberType = Self::NumberType> + BackTester {
+    U: Broker<NumberType = Self::NumberType, PortfolioNumberType = Self::NumberType> + BackTester {
         // event!(Level::INFO, "{:?}", slice.get_bar_by_symbol("AAPL"))
         println!("{}", slice);
         println!("{}", engine.get_time());
         if engine.get_time() == 1649376000000 {
-            engine.submit_market_order(rt_core::Security::Equity(String::from("AAPL")), 1000.0, Side::Buy);
+            engine.submit_market_order(rt_core::security::SecuritySymbol::Equity(String::from("AAPL")), 1000.0, Side::Buy);
         }
         println!("{:?}", engine.cash_balance());
-        println!("{:?}", engine.get_holding(rt_core::Security::Equity(String::from("AAPL"))))
+        println!("{:?}", engine.get_holding(rt_core::security::SecuritySymbol::Equity(String::from("AAPL"))))
         
     }
 }

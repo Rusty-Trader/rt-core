@@ -1,15 +1,16 @@
 use std::collections::HashMap;
 
-use crate::{broker::orders::FilledOrder, PortfolioNumberType, DataNumberType, Security};
-use crate::broker::orders::{Side, OrderError};
+use crate::security::{Security, SecuritySymbol};
+use crate::{broker::orders::FilledOrder, DataNumberType, PortfolioNumberType};
+use crate::broker::orders::{OrderError, Side};
 
 
 /// A Holding stores information about the security that a portfolio contains.
-#[derive(Debug, PartialEq, PartialOrd, Eq)]
+#[derive(Debug, PartialEq, PartialOrd, Eq, Clone)]
 pub enum Holding<T> where T: PortfolioNumberType {
-
     Equity(T)
 }
+
 
 impl<T> Holding<T> where T: PortfolioNumberType {
 
@@ -29,13 +30,20 @@ impl<T> Holding<T> where T: PortfolioNumberType {
         }
     }
 
-    fn new(symbol: Security, volume: T) -> Self {
+    fn new(symbol: SecuritySymbol, volume: T) -> Self {
         match symbol {
-            Security::Equity(_) => {
+            SecuritySymbol::Equity(_) => {
                 return Self::Equity(volume)
             }
         }
     }
+
+    pub fn get_volume(&self) -> T {
+        match self {
+            Self::Equity(amnt) => *amnt
+        }
+    }
+
 }
 
 pub struct Portfolio<T, F> where
@@ -45,9 +53,11 @@ pub struct Portfolio<T, F> where
     // TODO: Add support for foreign cash
     cash: T,
 
-    holdings: HashMap<Security, Holding<T>>,
+    holdings: HashMap<SecuritySymbol, Holding<T>>,
 
-    filled_orders: HashMap<String, Result<FilledOrder<F>, OrderError<F>>>
+    filled_orders: HashMap<String, Result<FilledOrder<F>, OrderError<F>>>,
+
+    registered_securities: HashMap<SecuritySymbol, Security>
 
 
 }
@@ -59,46 +69,46 @@ impl<T, F> Portfolio<T, F> where T: PortfolioNumberType, F: DataNumberType {
         Self {
             cash: <i8 as Into<T>>::into(1),
             holdings: HashMap::new(),
-            filled_orders: HashMap::new()
+            filled_orders: HashMap::new(),
+            registered_securities: HashMap::new()
         }
     }
 
-    pub fn update_holdings(&mut self, orders: Vec<Result<FilledOrder<F>, OrderError<F>>>) where
+    pub fn update_holding(&mut self, order: Result<FilledOrder<F>, OrderError<F>>) where
         F: DataNumberType + Into<T> {
 
-        for order in orders {
-            match &order {
-                Ok(y) => {
-                    match self.holdings.get_mut(&y.get_symbol()) {
-                        Some(x) => {
-                            match y.get_side() {
-                                Side::Buy => {
-                                    x.add(y.get_volume().into());
-                                    self.cash -= y.get_cost().into() + y.get_commission().into();
-                                },
-                                Side::Sell => {
-                                    x.sub(y.get_volume().into());
-                                    self.cash += y.get_cost().into() - y.get_commission().into();
-                                }   
-                            }
-                        },
-                        None => {
-                            match y.get_side() {
-                                Side::Buy => {
-                                    self.holdings.insert(y.get_symbol(), Holding::new(y.get_symbol(), y.get_volume().into()));
-                                    self.cash -= y.get_cost().into() + y.get_commission().into();
-                                },
-                                Side::Sell => {}   
-                            }  
+        // for order in orders {
+        match order.clone() {
+            Ok(y) => {
+                match self.holdings.get_mut(&y.get_symbol()) {
+                    Some(x) => {
+                        match y.get_side() {
+                            Side::Buy => {
+                                x.add(y.get_volume().into());
+                                self.cash -= y.get_cost().into() + y.get_commission().into();
+                            },
+                            Side::Sell => {
+                                x.sub(y.get_volume().into());
+                                self.cash += y.get_cost().into() - y.get_commission().into();
+                            }   
                         }
+                    },
+                    None => {
+                        match y.get_side() {
+                            Side::Buy => {
+                                self.holdings.insert(y.get_symbol(), Holding::new(y.get_symbol(), y.get_volume().into()));
+                                self.cash -= y.get_cost().into() + y.get_commission().into();
+                            },
+                            Side::Sell => {}   
+                        }  
                     }
-
-                    self.filled_orders.insert(y.get_id(), order.clone());
-                
-                },
-                Err(e) => {
-                    self.filled_orders.insert(e.get_id(), order.clone());
                 }
+
+                self.filled_orders.insert(y.get_id(), order.clone());
+            
+            },
+            Err(e) => {
+                self.filled_orders.insert(e.get_id(), order.clone());
             }
         }
     }
@@ -115,8 +125,20 @@ impl<T, F> Portfolio<T, F> where T: PortfolioNumberType, F: DataNumberType {
         &self.filled_orders
     }
 
-    pub fn get_holding(&self, symbol: Security) -> Option<&Holding<T>> {
-        self.holdings.get(&symbol)
+    pub fn get_holding(&self, symbol: SecuritySymbol) -> Option<Holding<T>> {
+        self.holdings.get(&symbol).map(|x| x.to_owned())
+    }
+
+    pub fn register_security(&mut self, symbol: SecuritySymbol, details: Security) {
+        self.registered_securities.insert(symbol, details);
+    }
+
+    pub fn security_details(&self, symbol: &SecuritySymbol) -> Option<&Security> {
+        self.registered_securities.get(symbol)
+    }
+
+    pub fn is_registered(&self, symbol: SecuritySymbol) -> bool {
+        self.registered_securities.contains_key(&symbol)
     }
 
 }
@@ -134,17 +156,17 @@ mod tests {
 
         portfolio.cash = 10000.0;
 
-        let order: MarketOrder<f64> = MarketOrder::new("1", Security::Equity(String::from("Test")), 1000, 1000.0, Side::Buy);
+        let order: MarketOrder<f64> = MarketOrder::new("1", SecuritySymbol::Equity(String::from("Test")), 1000, 1000.0, Side::Buy);
 
-        let mut orders: Vec<Result<FilledOrder<f64>, _>> = Vec::new();
-        orders.push(Ok(FilledOrder::new(
+        // let mut orders: Vec<Result<FilledOrder<f64>, _>> = Vec::new();
+        let filled_order = Ok(FilledOrder::new(
             OrderType::MarketOrder(order),
             1000,
             1000.0,
             6.0,
             1.0,
             false)
-        ));
+        );
 
 
         let expected_cash = 3999.0;
@@ -153,9 +175,9 @@ mod tests {
 
 
         // Act
-        portfolio.update_holdings(orders);
+        portfolio.update_holding(filled_order);
         let result_cash = portfolio.cash;
-        let result_holdings = portfolio.holdings.get(&Security::Equity(String::from("Test"))).unwrap();
+        let result_holdings = portfolio.holdings.get(&SecuritySymbol::Equity(String::from("Test"))).unwrap();
 
         // Assert
 
@@ -174,32 +196,32 @@ mod tests {
         portfolio.cash = 0.0;
 
         let mut portfolio_map = HashMap::new();
-        portfolio_map.insert(Security::Equity(String::from("Test")), Holding::Equity(1000.0));
+        portfolio_map.insert(SecuritySymbol::Equity(String::from("Test")), Holding::Equity(1000.0));
 
         portfolio.holdings = portfolio_map;
 
-        let order: MarketOrder<f64> = MarketOrder::new("1", Security::Equity(String::from("Test")), 1000, 1000.0, Side::Sell);
+        let order: MarketOrder<f64> = MarketOrder::new("1", SecuritySymbol::Equity(String::from("Test")), 1000, 1000.0, Side::Sell);
 
-        let mut orders: Vec<Result<FilledOrder<f64>, _>> = Vec::new();
+        // let mut orders: Vec<Result<FilledOrder<f64>, _>> = Vec::new();
 
-        let filled_order = FilledOrder::new(
+        let filled_order = Ok(FilledOrder::new(
             OrderType::MarketOrder(order),
             1000,
             1000.0,
             6.0,
             1.0,
             false
-        );
+        ));
 
-        orders.push(Ok(filled_order));
+        // orders.push(Ok(filled_order));
 
         let expected_cash = 5999.0;
         let expected_holdings = &Holding::Equity(0.0);
 
         // Act
-        portfolio.update_holdings(orders);
+        portfolio.update_holding(filled_order);
         let result_cash = portfolio.cash;
-        let result_holdings = portfolio.holdings.get(&Security::Equity(String::from("Test"))).unwrap();
+        let result_holdings = portfolio.holdings.get(&SecuritySymbol::Equity(String::from("Test"))).unwrap();
 
         // Assert
 

@@ -1,5 +1,5 @@
-use std::ops::{Add, Sub, Mul, Div, AddAssign, SubAssign};
-use std::cmp::{PartialOrd, PartialEq};
+use std::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
+use std::cmp::{PartialEq, PartialOrd};
 use std::fmt::Debug;
 
 pub mod data;
@@ -10,11 +10,7 @@ pub mod algorithm;
 mod time;
 pub mod portfolio;
 pub mod broker;
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum Security {
-    Equity(String)
-}
+pub mod security;
 
 
 pub trait NumberType: Copy + 
@@ -45,7 +41,8 @@ impl PortfolioNumberType for f32 {}
 
 #[cfg(test)]
 pub mod test_utils {
-    use crate::data::{DataPoint, DataType, tradebars::TradeBar, Resolution};
+    use crate::data::{DataPoint, DataType, Resolution, tradebars::TradeBar};
+    use crate::security::SecuritySymbol;
 
 
     pub fn setup_data_line_daily() -> Vec<DataPoint<f64>> {
@@ -53,7 +50,7 @@ pub mod test_utils {
 
         output.push(
             DataPoint::new(
-                crate::Security::Equity(String::from("AAPL")),
+                crate::security::SecuritySymbol::Equity(String::from("AAPL")),
                 1649116800000,
                 DataType::Bar(TradeBar::new(
                     76468400.0,
@@ -64,7 +61,7 @@ pub mod test_utils {
                     1649030400000,
                     1649116800000,
                     false,
-                    "AAPL",
+                    SecuritySymbol::Equity(String::from("AAPL")),
                     Resolution::Day
                 )),
                 Resolution::Day
@@ -73,7 +70,7 @@ pub mod test_utils {
 
         output.push(
             DataPoint::new(
-                crate::Security::Equity(String::from("AAPL")),
+                crate::security::SecuritySymbol::Equity(String::from("AAPL")),
                 1649203200000,
                 DataType::Bar(TradeBar::new(
                     73401800.0,
@@ -84,7 +81,7 @@ pub mod test_utils {
                     1649116800000,
                     1649203200000,
                     false,
-                    "AAPL",
+                    SecuritySymbol::Equity(String::from("AAPL")),
                     Resolution::Day
                 )),
                 Resolution::Day
@@ -93,7 +90,7 @@ pub mod test_utils {
 
         output.push(
             DataPoint::new(
-                crate::Security::Equity(String::from("AAPL")),
+                crate::security::SecuritySymbol::Equity(String::from("AAPL")),
                 1649289600000,
                 DataType::Bar(TradeBar::new(
                     89058800.0,
@@ -104,7 +101,7 @@ pub mod test_utils {
                     1649203200000,
                     1649289600000,
                     false,
-                    "AAPL",
+                    SecuritySymbol::Equity(String::from("AAPL")),
                     Resolution::Day
                 )),
                 Resolution::Day
@@ -113,7 +110,7 @@ pub mod test_utils {
 
         output.push(
             DataPoint::new(
-                crate::Security::Equity(String::from("AAPL")),
+                crate::security::SecuritySymbol::Equity(String::from("AAPL")),
                 1649376000000,
                 DataType::Bar(TradeBar::new(
                     77594700.0,
@@ -124,7 +121,7 @@ pub mod test_utils {
                     1649289600000,
                     1649376000000,
                     false,
-                    "AAPL",
+                    SecuritySymbol::Equity(String::from("AAPL")),
                     Resolution::Day
                 )),
                 Resolution::Day

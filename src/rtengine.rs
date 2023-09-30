@@ -1,29 +1,27 @@
-
-use std::collections::HashMap;
-use std::marker::PhantomData;
 use std::sync::atomic::AtomicI64;
 use std::sync::Arc;
+use std::rc::Rc;
+use std::cell::RefCell;
 use chrono::NaiveDateTime;
 
-use crate::Security;
+use crate::security::{Security, SecuritySymbol};
 use crate::algorithm::Algo;
-use crate::broker::fill::PortfolioData;
 use crate::broker::fill::engine::FillEngine;
-use crate::data::{datafeed, Resolution};
+use crate::data::{DataSymbolProperties, deserialize_symbol_properties, Resolution};
 use crate::data::datamanger::DataManager;
 use crate::data::datafeed::DataFeed;
 use crate::error::Error;
 use crate::data::datafeed::DataFeedBuilder;
-use crate::portfolio::{Portfolio, Holding};
+use crate::portfolio::{Holding, Portfolio};
 use crate::time::TimeSync;
-use crate::broker::{Broker, BacktestingBroker};
-use crate::broker::orders::{Order, Side, MarketOrder, FilledOrder, OrderError};
+use crate::broker::Broker;
+use crate::broker::orders::{FilledOrder, MarketOrder, OrderError, Side};
 
 pub struct RTEngine<T, U> where U: Broker + BackTester {
 
     data_manager: DataManager<f64>,
 
-    portfolio: Portfolio<f64, f64>,
+    portfolio: Rc<RefCell<Portfolio<f64, f64>>>,
 
     broker: U,
 
@@ -37,7 +35,7 @@ pub struct RTEngine<T, U> where U: Broker + BackTester {
 
 impl<T, U> RTEngine<T, U> where
     T: Algo<NumberType = f64>,
-    U: Broker<NumberType = f64> + BackTester
+    U: Broker<NumberType = f64, PortfolioNumberType = f64> + BackTester
     {
 
 
@@ -76,13 +74,13 @@ impl<T, U> RTEngine<T, U> where
             let slice = self.data_manager.get_slice();
 
             // Get latest portfolio details to fill engine
-            self.broker.send_portfolio_data(PortfolioData{cash: self.portfolio.get_cash(), holdings: HashMap::new()});
+            // self.broker.send_portfolio_data(PortfolioData{cash: self.portfolio.borrow_mut().get_cash(), holdings: HashMap::new()});
 
             // Process Fill Orders
             self.broker.next_cycle().unwrap();
 
             // Update portfolio information
-            self.update_holdings();
+            // self.update_holdings();
 
             // Pass Slice to Algorithm
 
@@ -107,9 +105,63 @@ impl<T, U> RTEngine<T, U> where
         EngineBuilder::new()
     }
 
+    // pub fn add_equity(&mut self, symbol: &str) {
+    //     // TODO: Currently there is only support for US Stocks - add multi currency support.
+    //     self.add_security(
+    //         SecuritySymbol::Equity(symbol.to_owned()),
+    //         Security::Equity(
+    //             Equity::new(
+    //                 Currency::USD
+    //             )
+    //         )
+    //     )
+    // }
+
+    pub fn register_security(&mut self, security: SecuritySymbol, market: &str) {
+
+        let result = deserialize_symbol_properties();
+
+        match result {
+            Ok(symbols) => {
+                match symbols.clone().into_iter().filter(|r| r.symbol == security.symbol()).collect::<Vec<_>>().first() {
+                    Some(properties) => {
+                        self.register_custom_security(security, properties.clone().to_security())
+                    },
+                    None => {
+                        match symbols.into_iter().filter(|r| (r.symbol == "*") &
+                            (r.market == market) & (r.security_type == security.security_type())).collect::<Vec<DataSymbolProperties>>().first() {
+                            Some(properties) => {
+                                self.register_custom_security(security, properties.clone().to_security())
+                            }
+                            None => {
+                                panic!("Could not register {}", security.symbol())
+                            }
+                        }
+                    }
+                }
+            },
+            Err(_) => {
+                panic!("Could not load security database file")
+            }
+        }
+    }
+
+    pub fn register_custom_security(&mut self, symbol: SecuritySymbol, details: Security) {
+        self.portfolio.borrow_mut().register_security(symbol, details)
+    }
+
     pub fn add_feed<D: DataFeedBuilder<NumberType = f64>>(&mut self, datafeed_builder: D)
         where <D as DataFeedBuilder>::Output: 'static + DataFeed<NumberType = f64> {
+
+        // Register securities from data feeds with the Portfolio
+        for (symbol, market) in datafeed_builder.get_symbols() {
+            if !self.portfolio.borrow().is_registered(symbol.clone()) {
+                self.register_security(symbol.clone(), market)
+            }
+        }
+
         self.data_manager.add_feed(datafeed_builder)
+
     }
 
     pub fn get_time(&self) -> i64 {
@@ -117,37 +169,46 @@ impl<T, U> RTEngine<T, U> where
     }
 
     pub fn get_filled_orders(&mut self) -> Vec<Result<FilledOrder<f64>, OrderError<f64>>> {
-        self.portfolio.get_filled_orders().values().cloned().collect()
+        self.portfolio.borrow_mut().get_filled_orders().values().cloned().collect()
     }
 
-    pub fn submit_market_order(&mut self, symbol: Security, volume: f64, side: Side) -> Result<(), Error> {
-
+    pub fn submit_market_order(&mut self, symbol: SecuritySymbol, volume: f64, side: Side) -> Result<(), Error> {
         Ok(self.broker.submit_order(
             crate::broker::orders::OrderType::MarketOrder(
                 MarketOrder::new("Order", symbol, self.time.get_time(), volume, side)
             )
         ))
+    }
 
+    fn adjust_price_for_min_price_var(&self, symbol: &SecuritySymbol, price: f64) -> f64 {
+
+        let min_var = self.portfolio.borrow().security_details(symbol).unwrap().get_minimum_price_variation(); // TODO: error handle
+
+        round_down(price, min_var)
     }
 
     pub fn set_cash(&mut self, cash: f64) {
-        self.portfolio.set_cash(cash.into())
+        self.portfolio.borrow_mut().set_cash(cash.into())
     }
 
     pub fn cash_balance(&self) -> f64 {
-        self.portfolio.get_cash()
+        self.portfolio.borrow_mut().get_cash()
     }
 
-    pub fn get_holding(&self, symbol: Security) -> Option<&Holding<f64>> {
-        self.portfolio.get_holding(symbol)
+    pub fn get_holding(&self, symbol: SecuritySymbol) -> Option<Holding<f64>> {
+        self.portfolio.borrow_mut().get_holding(symbol)
     }
 
-    fn update_holdings(&mut self) {
-        self.portfolio.update_holdings(
-            self.broker.get_filled_orders()
-        )
-    }
+    // fn update_holdings(&mut self) {
+    //     self.portfolio.borrow_mut().update_holdings(
+    //         self.broker.get_filled_orders()
+    //     )
+    // }
 
+}
+
+fn round_down(x: f64, a: f64) -> f64 {
+    (x/a).floor() * a
 }
 
 
@@ -169,7 +230,7 @@ pub struct EngineBuilder<T, U> where
 
 impl<T, U> EngineBuilder<T, U> where
     T: Algo,
-    U: Broker<NumberType = f64> {
+    U: Broker<NumberType = f64, PortfolioNumberType = f64> {
 
     pub fn new() -> Self {
         Self {
@@ -191,17 +252,19 @@ impl<T, U> EngineBuilder<T, U> where
             .ok_or(Error::IncompleteBuilder(format!("Engine must have a Run Mode")))?);
             // .ok_or(Error::IncompleteBuilder(format!("Engine must have a Run Mode")))?
 
+        let portfolio: Rc<RefCell<Portfolio<f64, f64>>> = Rc::new(RefCell::new(Portfolio::new()));
+
         // &mut self.broker.map(|x| x.connect_to_data(data_manager.with_fill_sender()));
 
         let mut broker = self.broker.ok_or(Error::IncompleteBuilder(format!("Broker must be specified")))?;
 
         broker.connect_to_data(data_manager.with_fill_sender());
 
-        broker.connect(time_sync.clone());
+        broker.connect(time_sync.clone(), portfolio.clone());
 
         Ok(RTEngine {
             data_manager: data_manager,
-            portfolio: Portfolio::new(),
+            portfolio: portfolio,
             broker: broker,
             algo: self.algo
                 .ok_or(Error::IncompleteBuilder(format!("Algorithm must be added before engine can be built")))?,
@@ -271,4 +334,65 @@ pub enum RunMode {
     PaperTrade,
     BackTest,
     UnitTest
+}
+
+
+#[cfg(test)]
+mod tests {
+    use chrono::NaiveDate;
+    use crate::broker::BacktestingBroker;
+    use crate::broker::fill::engine::BasicFillEngine;
+    use crate::broker::slippage::simple_model::SimpleSlippageModel;
+    use super::*;
+
+    use crate::rtengine::RTEngine;
+    use crate::data::datamanger::DataManager;
+    use crate::data::slice::Slice;
+    use crate::security::{Currency, Equity};
+
+    #[derive(Clone)]
+    struct TestAlgo {}
+
+    impl Algo for TestAlgo {
+        
+        type NumberType = f64;
+        fn on_data<T, U>(&self, slice: Slice<Self::NumberType>, engine: &mut RTEngine<T, U>) where
+            T: Algo<NumberType=Self::NumberType>,
+            U: Broker<NumberType=Self::NumberType, PortfolioNumberType=Self::NumberType> + BackTester {
+        }
+    }
+
+    #[test]
+    fn test_register_security_equity() {
+
+        // Arrange
+        let start_date = NaiveDate::from_ymd_opt(2022, 4, 4).unwrap().and_hms_opt(0, 0, 0).unwrap();
+
+        let algo = TestAlgo {};
+
+        let slippage = SimpleSlippageModel::new(0.01);
+
+        let fill_engine = BasicFillEngine::new(0.01, slippage);
+
+        let broker = BacktestingBroker::new(0.01, fill_engine);
+
+        let mut engine = RTEngine::builder()
+            .with_mode(crate::rtengine::RunMode::UnitTest)
+            .with_algo(algo)
+            .with_resolution(Resolution::Day)
+            .with_start_time(start_date)
+            .with_broker(broker)
+            .build().unwrap();
+
+        let expected = &Security::Equity(Equity::new(Currency::USD, 0.01));
+        // Act
+
+        engine.register_security(SecuritySymbol::Equity(String::from("AAPL")), "usa");
+
+        let binding = engine.portfolio.borrow();
+        let result = binding.security_details(&SecuritySymbol::Equity(String::from("AAPL"))).unwrap();
+
+        // Assert
+        assert_eq!(result, expected)
+    }
 }
