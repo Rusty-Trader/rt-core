@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 use std::hash::Hash;
 
-use crate::{PortfolioNumberType, DataNumberType, Security};
+use crate::{DataNumberType, PortfolioNumberType};
+use crate::security::SecuritySymbol;
 use crate::utils::Merge;
 
 pub mod engine;
@@ -11,7 +12,7 @@ pub struct PortfolioData<T> where T: DataNumberType {
     
     pub cash: T,
 
-    pub holdings: HashMap<Security, T>
+    pub holdings: HashMap<SecuritySymbol, T>
 
 }
 
@@ -28,7 +29,7 @@ impl<T> PortfolioData<T> where T: DataNumberType {
         self.cash
     }
 
-    pub fn get_holding_amount(&self, holding: Security) -> Option<&T> {
+    pub fn get_holding_amount(&self, holding: SecuritySymbol) -> Option<&T> {
         self.holdings.get(&holding)
     }
 }

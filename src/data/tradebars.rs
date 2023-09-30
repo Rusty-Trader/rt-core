@@ -4,12 +4,13 @@ use std::ops::Index;
 use chrono::NaiveDateTime;
 
 use super::{Resolution, FillFwd};
+use crate::security::SecuritySymbol;
 use crate::utils::Merge;
 
 #[derive(Debug, Clone)]
 pub struct TradeBars<T> {
 
-    data: HashMap<String, TradeBar<T>>,
+    data: HashMap<SecuritySymbol, TradeBar<T>>,
 }
 
 
@@ -21,26 +22,30 @@ impl<T> TradeBars<T> {
         }
     }
 
-    pub fn from_bar(tradebar: TradeBar<T>) -> TradeBars<T> {
-        let mut tmp = TradeBars::new();
-        tmp.add(tradebar.symbol.clone().as_str(), tradebar);
-        tmp
+    // pub fn from_bar(tradebar: TradeBar<T>) -> TradeBars<T> {
+    //     let mut tmp = TradeBars::new();
+    //     tmp.add(tradebar.symbol.clone().as_str(), tradebar);
+    //     tmp
+    // }
+
+    pub fn add(&mut self, symbol: SecuritySymbol, tradebar: TradeBar<T>) {
+        self.data.insert(symbol.clone(), tradebar);
     }
 
-    pub fn add(&mut self, symbol: &str, tradebar: TradeBar<T>) {
-        self.data.insert(symbol.to_string(), tradebar);
-    }
-
-    pub fn symbols(&self) -> Vec<String> {
+    pub fn symbols(&self) -> Vec<SecuritySymbol> {
         self.data.keys().cloned().collect()
     }
 
-    pub fn contains_symbol(&self, key: &str) -> bool {
+    pub fn contains_symbol(&self, key: &SecuritySymbol) -> bool {
         self.data.contains_key(key)
     }
 
-    pub fn get_bar(&self, symbol: &str) -> Option<&TradeBar<T>> {
+    pub fn get_bar(&self, symbol: &SecuritySymbol) -> Option<&TradeBar<T>> {
         self.data.get(symbol)
+    }
+
+    pub fn has_data(&self) -> bool {
+        !self.data.is_empty()
     }
 
     // pub fn map<U, F>(&self, f: F) -> Option<U> where F: FnOnce(T) -> U {
@@ -55,10 +60,10 @@ impl<T: fmt::Debug> fmt::Display for TradeBars<T> {
     }
 }
 
-impl<T> Index<&'_ str> for TradeBars<T> {
+impl<T> Index<&'_ SecuritySymbol> for TradeBars<T> {
     type Output = TradeBar<T>;
 
-    fn index(&self, index: &str) -> &Self::Output {
+    fn index(&self, index: &SecuritySymbol) -> &Self::Output {
         &self.data[index]
     }
 
@@ -92,7 +97,7 @@ pub struct TradeBar<T> {
 
     pub is_fill_fwd: bool,
 
-    pub symbol: String,
+    pub symbol: SecuritySymbol,
 
     pub period: Resolution,
 
@@ -108,7 +113,7 @@ impl<T> TradeBar<T> {
         start_time: i64,
         end_time: i64,
         is_fill_fwd: bool,
-        symbol: &str,
+        symbol: SecuritySymbol,
         period: Resolution
     ) -> TradeBar<T> {
         TradeBar {
@@ -120,7 +125,7 @@ impl<T> TradeBar<T> {
             start_time,
             end_time,
             is_fill_fwd,
-            symbol: symbol.to_string(),
+            symbol: symbol,
             period   
         }
     }
@@ -128,7 +133,7 @@ impl<T> TradeBar<T> {
 
 impl<T: fmt::Debug> fmt::Display for TradeBar<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "volume: {:?}, open: {:?}, high: {:?}, low: {:?}, close: {:?}, start time: {:?}, end_time: {:?}, fill fwd: {}, symbol: {}, period: {:?}", self.volume, self.open, self.high, self.low, self.close, NaiveDateTime::from_timestamp_millis(self.start_time), NaiveDateTime::from_timestamp_millis(self.end_time), self.is_fill_fwd, self.symbol, self.period)
+        write!(f, "volume: {:?}, open: {:?}, high: {:?}, low: {:?}, close: {:?}, start time: {:?}, end_time: {:?}, fill fwd: {}, symbol: {:?}, period: {:?}", self.volume, self.open, self.high, self.low, self.close, NaiveDateTime::from_timestamp_millis(self.start_time), NaiveDateTime::from_timestamp_millis(self.end_time), self.is_fill_fwd, self.symbol, self.period)
     }
 }
 
@@ -137,6 +142,7 @@ impl<T: fmt::Debug> fmt::Display for TradeBar<T> {
 mod tests {
     use super::*;
     use rust_decimal_macros::dec;
+    use crate::security::SecuritySymbol;
 
     #[test]
     fn add() {
@@ -150,7 +156,7 @@ mod tests {
             1001,
             1002,
             false,
-            "Test Symbol",
+            SecuritySymbol::Equity(String::from("Test Symbol")),
             Resolution::Day
         );
 

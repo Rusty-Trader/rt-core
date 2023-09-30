@@ -8,7 +8,5 @@ type NumberType;
 
     fn on_data<T, U>(&self, slice: Slice<Self::NumberType>, engine: &mut RTEngine<T, U>) where
         T: Algo<NumberType = Self::NumberType>,
-        U: Broker<NumberType = Self::NumberType> + BackTester {
-
-    }
+        U: Broker<NumberType = Self::NumberType, PortfolioNumberType = Self::NumberType> + BackTester;
 }
