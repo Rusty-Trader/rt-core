@@ -20,6 +20,14 @@ impl Security {
             Self::Equity(_) => SecurityType::Equity,
         }
     }
+
+    pub fn get_minimum_price_variation(&self) -> f64 {
+        match self {
+            Self::Equity(x) => {
+                x.minimum_price_variation
+            }
+        }
+    }
 }
 
 

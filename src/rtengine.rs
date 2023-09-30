@@ -119,10 +119,6 @@ impl<T, U> RTEngine<T, U> where
 
     pub fn register_security(&mut self, security: SecuritySymbol, market: &str) {
 
-        // if !self.data_manager.symbol_exists(security.clone()) {
-        //     panic!("No data source found in Data Manager for {}", security.symbol())
-        // }
-
         let result = deserialize_symbol_properties();
 
         match result {
@@ -144,7 +140,7 @@ impl<T, U> RTEngine<T, U> where
                     }
                 }
             },
-            Err(e) => {
+            Err(_) => {
                 panic!("Could not load security database file")
             }
         }
@@ -156,7 +152,16 @@ impl<T, U> RTEngine<T, U> where
 
     pub fn add_feed<D: DataFeedBuilder<NumberType = f64>>(&mut self, datafeed_builder: D)
         where <D as DataFeedBuilder>::Output: 'static + DataFeed<NumberType = f64> {
+
+        // Register securities from data feeds with the Portfolio
+        for (symbol, market) in datafeed_builder.get_symbols() {
+            if !self.portfolio.borrow().is_registered(symbol.clone()) {
+                self.register_security(symbol.clone(), market)
+            }
+        }
+
         self.data_manager.add_feed(datafeed_builder)
+
     }
 
     pub fn get_time(&self) -> i64 {
@@ -168,13 +173,18 @@ impl<T, U> RTEngine<T, U> where
     }
 
     pub fn submit_market_order(&mut self, symbol: SecuritySymbol, volume: f64, side: Side) -> Result<(), Error> {
-
         Ok(self.broker.submit_order(
             crate::broker::orders::OrderType::MarketOrder(
                 MarketOrder::new("Order", symbol, self.time.get_time(), volume, side)
             )
         ))
+    }
 
+    fn adjust_price_for_min_price_var(&self, symbol: &SecuritySymbol, price: f64) -> f64 {
+
+        let min_var = self.portfolio.borrow().security_details(symbol).unwrap().get_minimum_price_variation(); // TODO: error handle
+
+        round_down(price, min_var)
     }
 
     pub fn set_cash(&mut self, cash: f64) {
@@ -195,6 +205,10 @@ impl<T, U> RTEngine<T, U> where
     //     )
     // }
 
+}
+
+fn round_down(x: f64, a: f64) -> f64 {
+    (x/a).floor() * a
 }
 
 
@@ -376,7 +390,7 @@ mod tests {
         engine.register_security(SecuritySymbol::Equity(String::from("AAPL")), "usa");
 
         let binding = engine.portfolio.borrow();
-        let result = binding.security_details(SecuritySymbol::Equity(String::from("AAPL"))).unwrap();
+        let result = binding.security_details(&SecuritySymbol::Equity(String::from("AAPL"))).unwrap();
 
         // Assert
         assert_eq!(result, expected)

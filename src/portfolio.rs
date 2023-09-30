@@ -63,8 +63,6 @@ pub struct Portfolio<T, F> where
 }
 
 
-
-
 impl<T, F> Portfolio<T, F> where T: PortfolioNumberType, F: DataNumberType {
 
     pub fn new() -> Self {
@@ -135,8 +133,8 @@ impl<T, F> Portfolio<T, F> where T: PortfolioNumberType, F: DataNumberType {
         self.registered_securities.insert(symbol, details);
     }
 
-    pub fn security_details(&self, symbol: SecuritySymbol) -> Option<&Security> {
-        self.registered_securities.get(&symbol)
+    pub fn security_details(&self, symbol: &SecuritySymbol) -> Option<&Security> {
+        self.registered_securities.get(symbol)
     }
 
     pub fn is_registered(&self, symbol: SecuritySymbol) -> bool {

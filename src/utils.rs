@@ -1,3 +1,4 @@
+use crate::DataNumberType;
 
 pub trait Merge {
 
@@ -29,6 +30,13 @@ impl<T: MergeByRef> MergeByRef for Option<T> {
         }
     }
 }
+
+// trait AdditionalOperations {
+//
+//     fn precision_floor<T>(&self, precision: f64) -> T {
+//         self.flo
+//     }
+// }
 
 
 

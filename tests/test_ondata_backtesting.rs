@@ -16,7 +16,7 @@ use rt_core::security::SecuritySymbol;
 fn test_on_data_backtesting() {
 
     // Arrange
-    let mut builder = CSVDataFeedBuilder::<f64, YahooFinanceTradeBar<f64>>::new(SecuritySymbol::Equity(String::from("AAPL")), Resolution::Day)
+    let mut builder = CSVDataFeedBuilder::<f64, YahooFinanceTradeBar<f64>>::new(SecuritySymbol::Equity(String::from("AAPL")), "usa",Resolution::Day)
         .with_path("tests/data/AAPL_yahoo_reduced.csv");
 
     let my_algo = MyAlgo {};
