@@ -32,7 +32,7 @@ pub trait FillEngine {
 
     // fn connect_to_broker(&mut self, sender: Sender<BrokerMessage<Self::NumberType>>, receiver: Receiver<BrokerMessage<Self::NumberType>>);
 
-    fn connect_to_engine(&mut self, time: TimeSync, portfolio: Rc<RefCell<Portfolio<Self::PortfolioNumberType, Self::NumberType>>>);
+    fn connect_to_engine(&mut self, time: TimeSync, portfolio: Rc<RefCell<Portfolio<Self::NumberType, Self::PortfolioNumberType>>>);
 
     fn connect_to_data(&mut self, data_receiver: Receiver<DataPoint<Self::NumberType>>);
 
@@ -88,7 +88,7 @@ pub struct BasicFillEngine<T, U, F> where
 
     commission: T,
 
-    portfolio: Option<Rc<RefCell<Portfolio<F, T>>>>
+    portfolio: Option<Rc<RefCell<Portfolio<T, F>>>>
 
 }
 
@@ -101,9 +101,11 @@ impl<T, U, F> BasicFillEngine<T, U, F>
         // TODO: Add ability for account margin
         // Check account has enough money
         if let Some(portfolio) = &self.portfolio {
+            let currency = portfolio.borrow().security_details(&order.get_symbol()).unwrap().get_currency(); // TODO: Add error handling
             match order.get_side() {
                 Side::Buy => {
-                    if portfolio.borrow().get_cash().into() < (order.get_volume() * price) {
+                    let cash: T = portfolio.borrow().get_cash(currency).unwrap().clone().into();
+                    if  cash < (order.get_volume() * price) {
                         return Err(OrderError::new(OrderType::MarketOrder(order), self.time.get_time(), "Insufficient Funds"))
                     }
                 },
@@ -236,7 +238,7 @@ impl<T, U, F> FillEngine for BasicFillEngine<T, U, F> where
     //     self.receiver = Some(receiver);
     // }
 
-    fn connect_to_engine(&mut self, time: TimeSync, portfolio: Rc<RefCell<Portfolio<Self::PortfolioNumberType, Self::NumberType>>>) {
+    fn connect_to_engine(&mut self, time: TimeSync, portfolio: Rc<RefCell<Portfolio<Self::NumberType, Self::PortfolioNumberType>>>) {
         self.time = time;
         self.portfolio = Some(portfolio)
     }
@@ -355,6 +357,7 @@ mod tests {
     use super::*;
 
     use crate::{broker::slippage::simple_model::SimpleSlippageModel, data::Resolution};
+    use crate::security::Currency;
     use crate::test_utils::setup_data_line_daily;
     
     #[test]
@@ -363,9 +366,9 @@ mod tests {
         // Arrange
         let slippage_model = SimpleSlippageModel::new(0.01);
 
-        let mut portfolio: Portfolio<f64, f64> = Portfolio::new();
+        let mut portfolio: Portfolio<f64, f64> = Portfolio::new(Currency::USD);
 
-        portfolio.set_cash(500000 as f64);
+        portfolio.set_cash(Currency::USD, 500000 as f64);
 
         let mut basic_fill_engine = BasicFillEngine::new(0.01, slippage_model);
 
@@ -403,7 +406,7 @@ mod tests {
         // Arrange
         let slippage_model = SimpleSlippageModel::new(0.01);
 
-        let portfolio: Portfolio<f64, f64> = Portfolio::new();
+        let portfolio: Portfolio<f64, f64> = Portfolio::new(Currency::USD);
 
         let mut basic_fill_engine = BasicFillEngine::new(0.01, slippage_model);
 

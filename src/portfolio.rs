@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 
-use crate::security::{Security, SecuritySymbol};
+use crate::security::{Currency, Security, SecuritySymbol};
 use crate::{broker::orders::FilledOrder, DataNumberType, PortfolioNumberType};
 use crate::broker::orders::{OrderError, Side};
+// use crate::error::Error;
 
 
 /// A Holding stores information about the security that a portfolio contains.
@@ -63,15 +64,17 @@ impl<T> Cash<T> where T: PortfolioNumberType {
 }
 
 pub struct Portfolio<T, F> where
-    T: PortfolioNumberType,
-    F: DataNumberType {
+    T: DataNumberType,
+    F: PortfolioNumberType {
 
     // TODO: Add support for foreign cash
-    cash: T,
+    reporting_currency: Currency,
 
-    holdings: HashMap<SecuritySymbol, Holding<T>>,
+    cash_holdings: HashMap<Currency, F>,
 
-    filled_orders: HashMap<String, Result<FilledOrder<F>, OrderError<F>>>,
+    holdings: HashMap<SecuritySymbol, Holding<F>>,
+
+    filled_orders: HashMap<String, Result<FilledOrder<T>, OrderError<T>>>,
 
     registered_securities: HashMap<SecuritySymbol, Security>
 
@@ -79,41 +82,50 @@ pub struct Portfolio<T, F> where
 }
 
 
-impl<T, F> Portfolio<T, F> where T: PortfolioNumberType, F: DataNumberType {
+impl<T, F> Portfolio<T, F> where
+    T: DataNumberType,
+    F: PortfolioNumberType {
 
-    pub fn new() -> Self {
+    pub fn new(reporting_currency: Currency) -> Self {
+
+        let mut tmp_cash = HashMap::new();
+
+        tmp_cash.insert(reporting_currency, <i8 as Into<F>>::into(1));
+
         Self {
-            cash: <i8 as Into<T>>::into(1),
+            reporting_currency,
+            cash_holdings: tmp_cash,
             holdings: HashMap::new(),
             filled_orders: HashMap::new(),
             registered_securities: HashMap::new()
         }
     }
 
-    pub fn update_holding(&mut self, order: Result<FilledOrder<F>, OrderError<F>>) where
-        F: DataNumberType + Into<T> {
+    pub fn update_holding(&mut self, order: Result<FilledOrder<T>, OrderError<T>>) where
+        T: DataNumberType + Into<F> {
 
         // for order in orders {
         match order.clone() {
             Ok(y) => {
+                let order_ccy: Security = self.security_details(&y.get_symbol()).unwrap().clone(); // TODO: Error handling
                 match self.holdings.get_mut(&y.get_symbol()) {
                     Some(x) => {
                         match y.get_side() {
                             Side::Buy => {
                                 x.add(y.get_volume().into());
-                                self.cash -= y.get_cost().into() + y.get_commission().into();
+                                self.sub_cash(&y, order_ccy.get_currency())
                             },
                             Side::Sell => {
                                 x.sub(y.get_volume().into());
-                                self.cash += y.get_cost().into() - y.get_commission().into();
-                            }   
+                                self.add_cash(&y, order_ccy.get_currency())
+                            }
                         }
                     },
                     None => {
                         match y.get_side() {
                             Side::Buy => {
                                 self.holdings.insert(y.get_symbol(), Holding::new(y.get_symbol(), y.get_volume().into()));
-                                self.cash -= y.get_cost().into() + y.get_commission().into();
+                                self.sub_cash(&y, order_ccy.get_currency());
                             },
                             Side::Sell => {}   
                         }  
@@ -128,20 +140,38 @@ impl<T, F> Portfolio<T, F> where T: PortfolioNumberType, F: DataNumberType {
             }
         }
     }
+
+    fn add_cash(&mut self, order: &FilledOrder<T>, currency : Currency) where T: DataNumberType + Into<F> {
+        match self.cash_holdings.get_mut(&currency) {
+            Some(cash) => {
+                *cash += order.get_cost().into() - order.get_commission().into();
+            },
+            None => {}
+        }
+    }
+
+    fn sub_cash(&mut self, order: &FilledOrder<T>, currency: Currency) where T: DataNumberType + Into<F> {
+        match self.cash_holdings.get_mut(&currency) {
+            Some(cash) => {
+                *cash -= order.get_cost().into() + order.get_commission().into();
+            },
+            None => {}
+        }
+    }
     
-    pub fn get_cash(&self) -> T {
-        self.cash
+    pub fn get_cash(&self, currency: Currency) -> Option<&F> {
+        self.cash_holdings.get(&currency)
     }
 
-    pub fn set_cash(&mut self, cash: F) where F: Into<T> {
-        self.cash = cash.into()
+    pub fn set_cash(&mut self, currency: Currency, cash: T) where T: Into<F> {
+        self.cash_holdings.insert(currency, cash.into());
     }
 
-    pub fn get_filled_orders(&self) -> &HashMap<String, Result<FilledOrder<F>, OrderError<F>>> {
+    pub fn get_filled_orders(&self) -> &HashMap<String, Result<FilledOrder<T>, OrderError<T>>> {
         &self.filled_orders
     }
 
-    pub fn get_holding(&self, symbol: SecuritySymbol) -> Option<Holding<T>> {
+    pub fn get_holding(&self, symbol: SecuritySymbol) -> Option<Holding<F>> {
         self.holdings.get(&symbol).map(|x| x.to_owned())
     }
 
@@ -163,14 +193,25 @@ impl<T, F> Portfolio<T, F> where T: PortfolioNumberType, F: DataNumberType {
 mod tests {
     use super::*;
     use crate::broker::orders::{FilledOrder, MarketOrder, OrderType};
+    use crate::security::Equity;
 
     #[test]
     fn test_update_holdings_buy_order() {
 
         // Arrange
-        let mut portfolio: Portfolio<f64, f64> = Portfolio::new();
+        let mut portfolio: Portfolio<f64, f64> = Portfolio::new(Currency::USD);
 
-        portfolio.cash = 10000.0;
+        portfolio.cash_holdings.insert(Currency::USD, 10000.0);
+
+        portfolio.register_security(
+            SecuritySymbol::Equity(String::from("Test")),
+            Security::Equity(
+                Equity::new(
+                    Currency::USD,
+                    0.01
+                )
+            )
+        );
 
         let order: MarketOrder<f64> = MarketOrder::new("1", SecuritySymbol::Equity(String::from("Test")), 1000, 1000.0, Side::Buy);
 
@@ -192,7 +233,7 @@ mod tests {
 
         // Act
         portfolio.update_holding(filled_order);
-        let result_cash = portfolio.cash;
+        let result_cash = *portfolio.get_cash(Currency::USD).unwrap();
         let result_holdings = portfolio.holdings.get(&SecuritySymbol::Equity(String::from("Test"))).unwrap();
 
         // Assert
@@ -207,9 +248,19 @@ mod tests {
     fn test_update_holdings_sell_order() {
 
         // Arrange
-        let mut portfolio: Portfolio<f64, f64> = Portfolio::new();
+        let mut portfolio: Portfolio<f64, f64> = Portfolio::new(Currency::USD);
 
-        portfolio.cash = 0.0;
+        portfolio.cash_holdings.insert(Currency::USD, 0.0);
+
+        portfolio.register_security(
+            SecuritySymbol::Equity(String::from("Test")),
+            Security::Equity(
+                Equity::new(
+                    Currency::USD,
+                    0.01
+                )
+            )
+        );
 
         let mut portfolio_map = HashMap::new();
         portfolio_map.insert(SecuritySymbol::Equity(String::from("Test")), Holding::Equity(1000.0));
@@ -236,7 +287,7 @@ mod tests {
 
         // Act
         portfolio.update_holding(filled_order);
-        let result_cash = portfolio.cash;
+        let result_cash = *portfolio.get_cash(Currency::USD).unwrap();
         let result_holdings = portfolio.holdings.get(&SecuritySymbol::Equity(String::from("Test"))).unwrap();
 
         // Assert

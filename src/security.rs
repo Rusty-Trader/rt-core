@@ -8,7 +8,7 @@ pub enum SecurityType {
 }
 
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, Deserialize, Clone, PartialEq)]
 pub enum Security {
     Equity(Equity)
 }
@@ -18,6 +18,14 @@ impl Security {
     pub fn security_type(&self) -> SecurityType {
         match self {
             Self::Equity(_) => SecurityType::Equity,
+        }
+    }
+
+    pub fn get_currency(&self) -> Currency {
+        match self {
+            Self::Equity(x) => {
+                x.get_currency()
+            }
         }
     }
 
@@ -50,7 +58,7 @@ impl SecuritySymbol {
     }
 }
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, Deserialize, Clone, PartialEq)]
 pub struct Equity {
     currency: Currency,
     minimum_price_variation: f64
@@ -70,7 +78,7 @@ impl Equity {
     }
 }
 
-#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq, Hash)]
 pub enum Currency {
     AED,
     AFN,

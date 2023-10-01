@@ -33,7 +33,7 @@ pub trait Broker {
 
     fn get_open_orders(&self) -> &HashMap<String, OrderType<Self::NumberType>>;
 
-    fn connect(&mut self, time: TimeSync, portfolio: Rc<RefCell<Portfolio<Self::PortfolioNumberType, Self::NumberType>>>);
+    fn connect(&mut self, time: TimeSync, portfolio: Rc<RefCell<Portfolio<Self::NumberType, Self::PortfolioNumberType>>>);
 
     fn connect_to_data(&mut self, data_receiver: Receiver<DataPoint<Self::NumberType>>);
 
@@ -62,7 +62,7 @@ pub struct BacktestingBroker<T, U, F> where
 
     open_orders: HashMap<String, OrderType<T>>,
 
-    portfolio: Option<Rc<RefCell<Portfolio<F, T>>>>
+    portfolio: Option<Rc<RefCell<Portfolio<T, F>>>>
 
 }
 
@@ -163,7 +163,7 @@ impl<T, U, F> Broker for BacktestingBroker<T, U, F> where
         &self.open_orders
     }
 
-    fn connect(&mut self, time: TimeSync, portfolio: Rc<RefCell<Portfolio<F, T>>>) {
+    fn connect(&mut self, time: TimeSync, portfolio: Rc<RefCell<Portfolio<T, F>>>) {
         self.time = time.clone();
         self.fill_engine.connect_to_engine(time, portfolio.clone());
         self.portfolio = Some(portfolio)

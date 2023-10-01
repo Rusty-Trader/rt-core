@@ -4,7 +4,7 @@ use std::rc::Rc;
 use std::cell::RefCell;
 use chrono::NaiveDateTime;
 
-use crate::security::{Security, SecuritySymbol};
+use crate::security::{Currency, Security, SecuritySymbol};
 use crate::algorithm::Algo;
 use crate::broker::fill::engine::FillEngine;
 use crate::data::{DataSymbolProperties, deserialize_symbol_properties, Resolution};
@@ -187,12 +187,12 @@ impl<T, U> RTEngine<T, U> where
         round_down(price, min_var)
     }
 
-    pub fn set_cash(&mut self, cash: f64) {
-        self.portfolio.borrow_mut().set_cash(cash.into())
+    pub fn set_cash(&mut self, currency: Currency, cash: f64) {
+        self.portfolio.borrow_mut().set_cash(currency, cash.into())
     }
 
-    pub fn cash_balance(&self) -> f64 {
-        self.portfolio.borrow_mut().get_cash()
+    pub fn cash_balance(&self, currency: Currency) -> Option<f64> {
+        self.portfolio.borrow_mut().get_cash(currency).map(|x| x.to_owned())
     }
 
     pub fn get_holding(&self, symbol: SecuritySymbol) -> Option<Holding<f64>> {
@@ -252,7 +252,7 @@ impl<T, U> EngineBuilder<T, U> where
             .ok_or(Error::IncompleteBuilder(format!("Engine must have a Run Mode")))?);
             // .ok_or(Error::IncompleteBuilder(format!("Engine must have a Run Mode")))?
 
-        let portfolio: Rc<RefCell<Portfolio<f64, f64>>> = Rc::new(RefCell::new(Portfolio::new()));
+        let portfolio: Rc<RefCell<Portfolio<f64, f64>>> = Rc::new(RefCell::new(Portfolio::new(Currency::USD)));
 
         // &mut self.broker.map(|x| x.connect_to_data(data_manager.with_fill_sender()));
 
