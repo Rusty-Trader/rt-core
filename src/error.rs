@@ -1,4 +1,5 @@
 use std::fmt;
+use std::fmt::write;
 
 use crate::broker::error::BrokerError;
 use crate::data::error::DataError;
@@ -15,7 +16,9 @@ pub enum Error {
 
     DataError(DataError),
 
-    OrderError(String)
+    OrderError(String),
+
+    FXConversionError(String)
 
 }
 
@@ -32,6 +35,8 @@ impl fmt::Display for Error {
                 write!(f, "{}", err),
             Error::OrderError(d) =>
                 write!(f, "{}", d),
+            Error::FXConversionError(d) =>
+                write!(f, "{}", d)
         }
     }
 }

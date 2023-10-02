@@ -4,6 +4,7 @@ pub mod datamanger;
 pub mod tradebars;
 pub mod error;
 pub mod slice;
+mod fx_manager;
 
 use tradebars::TradeBar;
 use serde::{Deserialize, Serialize};

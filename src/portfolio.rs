@@ -63,19 +63,25 @@ impl<T> Cash<T> where T: PortfolioNumberType {
     
 }
 
+/// Portfolio that stores information about the algorithm's current cash balance and security holdings.
 pub struct Portfolio<T, F> where
     T: DataNumberType,
     F: PortfolioNumberType {
 
-    // TODO: Add support for foreign cash
+    // TODO: Add support for foreign cash - Need to connect this to data manager and include an fx table and triangulation
+    /// Reporting currency of the portfolio.
     reporting_currency: Currency,
 
+    /// HashMap to store the number of units of each currency
     cash_holdings: HashMap<Currency, F>,
 
+    /// HashMap to store the number of units of each security
     holdings: HashMap<SecuritySymbol, Holding<F>>,
 
+    /// HashMap that stores all submitted orders that have either been successfully filled or have raised an error.
     filled_orders: HashMap<String, Result<FilledOrder<T>, OrderError<T>>>,
 
+    /// A HashMap that stores a database of security information such as the denominated currency.
     registered_securities: HashMap<SecuritySymbol, Security>
 
 
@@ -86,6 +92,7 @@ impl<T, F> Portfolio<T, F> where
     T: DataNumberType,
     F: PortfolioNumberType {
 
+    /// Returns a portfolio with the reporting currency set
     pub fn new(reporting_currency: Currency) -> Self {
 
         let mut tmp_cash = HashMap::new();
@@ -101,6 +108,8 @@ impl<T, F> Portfolio<T, F> where
         }
     }
 
+    // TODO: move error handing of order into seperate function
+    /// Updates the holdings of a portfolio when an order is filled
     pub fn update_holding(&mut self, order: Result<FilledOrder<T>, OrderError<T>>) where
         T: DataNumberType + Into<F> {
 
