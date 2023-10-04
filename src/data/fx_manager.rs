@@ -25,7 +25,7 @@ impl<T> FXManager<T> where T: DataNumberType {
 
 }
 
-
+#[derive(Debug, Eq, PartialEq)]
 pub struct ExchangeRate<T> where T: DataNumberType {
     source: Currency,
     target: Currency,
@@ -82,6 +82,139 @@ impl<T> ExchangeRate<T> where T: DataNumberType {
         } else {
             Err(Error::FXConversionError(String::from("exchange rate not chainable")))
         }
+
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_exchange_rate_chain_same_sources() {
+
+        // Arrange
+
+        let rate_1 = ExchangeRate::new(
+            Currency::USD,
+            Currency::JPY,
+           8.0
+        );
+
+        let rate_2 = ExchangeRate::new(
+            Currency::USD,
+            Currency::GBP,
+           4.0
+        );
+
+        let expected = ExchangeRate::new(
+            Currency::JPY,
+            Currency::GBP,
+           0.5
+        );
+
+        // Act
+        let result = ExchangeRate::chain(&rate_1, &rate_2).unwrap();
+
+        // Assert
+        assert_eq!(result, expected)
+
+    }
+
+
+    #[test]
+    fn test_exchange_rate_chain_source_to_target() {
+
+        // Arrange
+
+        let rate_1 = ExchangeRate::new(
+            Currency::USD,
+            Currency::JPY,
+            4.0
+        );
+
+        let rate_2 = ExchangeRate::new(
+            Currency::GBP,
+            Currency::USD,
+            8.0
+        );
+
+        let expected = ExchangeRate::new(
+            Currency::JPY,
+            Currency::GBP,
+            0.03125
+        );
+
+        // Act
+        let result = ExchangeRate::chain(&rate_1, &rate_2).unwrap();
+
+        // Assert
+        assert_eq!(result, expected)
+
+    }
+
+
+    #[test]
+    fn test_exchange_rate_chain_target_to_source() {
+
+        // Arrange
+
+        let rate_1 = ExchangeRate::new(
+            Currency::USD,
+            Currency::JPY,
+            4.0
+        );
+
+        let rate_2 = ExchangeRate::new(
+            Currency::JPY,
+            Currency::GBP,
+            8.0
+        );
+
+        let expected = ExchangeRate::new(
+            Currency::USD,
+            Currency::GBP,
+            32.0
+        );
+
+        // Act
+        let result = ExchangeRate::chain(&rate_1, &rate_2).unwrap();
+
+        // Assert
+        assert_eq!(result, expected)
+
+    }
+
+
+    #[test]
+    fn test_exchange_rate_chain_same_target() {
+
+        // Arrange
+
+        let rate_1 = ExchangeRate::new(
+        Currency::USD,
+        Currency::JPY,
+        4.0
+        );
+
+        let rate_2 = ExchangeRate::new(
+        Currency::GBP,
+        Currency::JPY,
+        8.0
+        );
+
+        let expected = ExchangeRate::new(
+        Currency::USD,
+        Currency::GBP,
+        0.5
+        );
+
+        // Act
+        let result = ExchangeRate::chain(&rate_1, &rate_2).unwrap();
+
+        // Assert
+        assert_eq!(result, expected)
 
     }
 }
