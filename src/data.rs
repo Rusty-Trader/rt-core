@@ -4,27 +4,27 @@ pub mod datamanger;
 pub mod tradebars;
 pub mod error;
 pub mod slice;
-mod fx_manager;
+pub mod fx_manager;
 
 use tradebars::TradeBar;
 use serde::{Deserialize, Serialize};
 use csv::Reader;
 use std::include_bytes;
 
-use crate::{security::{Currency, SecurityType}};
-use crate::security::{Equity, Security, SecuritySymbol};
+use crate::{DataNumberType, security::{Currency, SecurityType}};
+use crate::security::{Equity, FX, Security, SecuritySymbol};
 
 use self::error::DataError;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub struct DataPoint<T: Clone> {
+pub struct DataPoint<T: Clone> where T: DataNumberType {
     symbol: SecuritySymbol,
     time: i64,
     data: DataType<T>,
     period: Resolution,
 }
 
-impl<T> DataPoint<T> where T: Clone {
+impl<T> DataPoint<T> where T: DataNumberType {
 
     pub fn new(symbol: SecuritySymbol, time: i64, data: DataType<T>, period: Resolution) -> Self {
         Self { 
@@ -55,10 +55,24 @@ impl<T> DataPoint<T> where T: Clone {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub enum DataType<T> {
+pub enum DataType<T> where T: DataNumberType {
     Bar(TradeBar<T>),
     Tick(T),
     // None
+}
+
+impl<T> DataType<T> where T: DataNumberType {
+
+    pub fn get_spot(&self) -> Option<T> {
+        match self {
+            Self::Bar(x) => {
+                return Some(x.get_spot())
+            },
+            Self::Tick(x) => {
+                return Some(x.clone())
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -85,6 +99,7 @@ pub struct DataSymbolProperties {
     pub security_type: SecurityType,
     pub description: String,
     pub quote_currency: Currency,
+    pub foreign_currency: Currency,
     pub contract_multiplier: f64,
     pub minimum_price_variation: f64,
     pub lot_size: f64,
@@ -101,6 +116,15 @@ impl DataSymbolProperties {
                 Security::Equity(
                     Equity::new(
                         self.quote_currency,
+                        self.minimum_price_variation
+                    )
+                )
+            }
+            SecurityType::FX => {
+                Security::FX(
+                    FX::new(
+                        self.quote_currency,
+                        self.foreign_currency,
                         self.minimum_price_variation
                     )
                 )

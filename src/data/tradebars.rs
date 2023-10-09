@@ -2,19 +2,20 @@ use std::fmt::{self, write, Debug};
 use std::collections::HashMap;
 use std::ops::Index;
 use chrono::NaiveDateTime;
+use crate::DataNumberType;
 
 use super::{Resolution, FillFwd};
 use crate::security::SecuritySymbol;
 use crate::utils::Merge;
 
 #[derive(Debug, Clone)]
-pub struct TradeBars<T> {
+pub struct TradeBars<T> where T: DataNumberType {
 
     data: HashMap<SecuritySymbol, TradeBar<T>>,
 }
 
 
-impl<T> TradeBars<T> {
+impl<T> TradeBars<T> where T: DataNumberType {
 
     pub fn new() -> Self {
         Self {
@@ -54,13 +55,13 @@ impl<T> TradeBars<T> {
 
 }
 
-impl<T: fmt::Debug> fmt::Display for TradeBars<T> {
+impl<T: fmt::Debug> fmt::Display for TradeBars<T> where T: DataNumberType{
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self.data)
     }
 }
 
-impl<T> Index<&'_ SecuritySymbol> for TradeBars<T> {
+impl<T> Index<&'_ SecuritySymbol> for TradeBars<T> where T: DataNumberType {
     type Output = TradeBar<T>;
 
     fn index(&self, index: &SecuritySymbol) -> &Self::Output {
@@ -69,7 +70,7 @@ impl<T> Index<&'_ SecuritySymbol> for TradeBars<T> {
 
 }
 
-impl<T> Merge for TradeBars<T> {
+impl<T> Merge for TradeBars<T> where T: DataNumberType {
     
     fn merge(&mut self, other: Self) {
         self.data.extend(other.data)
@@ -79,7 +80,7 @@ impl<T> Merge for TradeBars<T> {
 
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TradeBar<T> {
+pub struct TradeBar<T> where T: DataNumberType {
 
     pub volume: T,
 
@@ -103,7 +104,7 @@ pub struct TradeBar<T> {
 
 }
 
-impl<T> TradeBar<T> {
+impl<T> TradeBar<T> where T: DataNumberType {
     pub fn new(
         volume: T,
         open: T,
@@ -129,9 +130,13 @@ impl<T> TradeBar<T> {
             period   
         }
     }
+
+    pub fn get_spot(&self) -> T {
+        self.close.clone()
+    }
 }
 
-impl<T: fmt::Debug> fmt::Display for TradeBar<T> {
+impl<T: fmt::Debug> fmt::Display for TradeBar<T> where T: DataNumberType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "volume: {:?}, open: {:?}, high: {:?}, low: {:?}, close: {:?}, start time: {:?}, end_time: {:?}, fill fwd: {}, symbol: {:?}, period: {:?}", self.volume, self.open, self.high, self.low, self.close, NaiveDateTime::from_timestamp_millis(self.start_time), NaiveDateTime::from_timestamp_millis(self.end_time), self.is_fill_fwd, self.symbol, self.period)
     }

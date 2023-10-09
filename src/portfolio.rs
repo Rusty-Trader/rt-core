@@ -9,7 +9,8 @@ use crate::broker::orders::{OrderError, Side};
 /// A Holding stores information about the security that a portfolio contains.
 #[derive(Debug, PartialEq, PartialOrd, Eq, Clone)]
 pub enum Holding<T> where T: PortfolioNumberType {
-    Equity(T)
+    Equity(T),
+    FX(T)
 }
 
 
@@ -20,12 +21,18 @@ impl<T> Holding<T> where T: PortfolioNumberType {
             Self::Equity(x) => {
                 *x += volume
             },
+            Self::FX(x) => {
+                *x += volume
+            }
         }
     }
 
     fn sub(&mut self, volume: T) {
         match self {
             Self::Equity(x) => {
+                *x -= volume
+            },
+            Self::FX(x) => {
                 *x -= volume
             }
         }
@@ -35,13 +42,17 @@ impl<T> Holding<T> where T: PortfolioNumberType {
         match symbol {
             SecuritySymbol::Equity(_) => {
                 return Self::Equity(volume)
+            },
+            SecuritySymbol::FX(..) => {
+                return Self::FX(volume)
             }
         }
     }
 
     pub fn get_volume(&self) -> T {
         match self {
-            Self::Equity(amnt) => *amnt
+            Self::Equity(amnt) => *amnt,
+            Self::FX(amnt) => *amnt
         }
     }
 

@@ -3,10 +3,11 @@ use std::hash::Hash;
 use std:: sync::mpsc::{channel, Receiver, Sender};
 use std::default::Default;
 use std::time::Duration;
+use crate::data::fx_manager::FXManager;
 
 use crate::DataNumberType;
 use crate::rtengine::{BackTester, RunMode};
-use crate::security::SecuritySymbol;
+use crate::security::{SecuritySymbol, SecurityType};
 use crate::time::TimeSync;
 use crate::utils::Merge;
 
@@ -17,11 +18,14 @@ use super::slice::Slice;
 
 
 
-pub struct DataManager<T> where T: Clone {
+pub struct DataManager<T> where
+    T: Clone + DataNumberType {
 
     buffer: VecDeque<DataPoint<T>>, // TODO: Deprecate
 
     securities: HashMap<SecuritySymbol, String>,
+
+    fxmanager: FXManager<T>,
 
     feeds: HashMap<String, Box<dyn DataFeed<NumberType = T>>>,
 
@@ -39,7 +43,8 @@ pub struct DataManager<T> where T: Clone {
 }
 
 
-impl<T> DataManager<T> where T: Clone {
+impl<T> DataManager<T> where
+    T: Clone + DataNumberType {
 
     pub fn new(time: TimeSync, mode: RunMode) -> DataManager<T> {
 
@@ -48,6 +53,7 @@ impl<T> DataManager<T> where T: Clone {
         DataManager{
             buffer: VecDeque::new(),
             securities: HashMap::new(),
+            fxmanager: FXManager::new(),
             feeds: HashMap::new(),
             sender: sender,
             receiver: receiver,
@@ -89,7 +95,12 @@ impl<T> DataManager<T> where T: Clone {
                 // slice.merge(val.clone().into())
                 slice.add_datapoint(val.clone())
             }
-            
+
+
+            if let (SecuritySymbol::FX(base, foreign), Some(x)) = (val.get_symbol(), val.data.get_spot()) {
+                self.fxmanager.update(base, foreign, x)
+            }
+
             // TODO: Move to next cycle
             if let Some(sender) = &self.fill_sender {
                 sender.send(val);

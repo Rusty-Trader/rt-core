@@ -1,3 +1,5 @@
+use std::fmt::Formatter;
+use std::ptr::write;
 use serde::Deserialize;
 
 
@@ -5,12 +7,14 @@ use serde::Deserialize;
 pub enum SecurityType {
     #[serde(rename(deserialize = "equity"))]
     Equity,
+    FX
 }
 
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
 pub enum Security {
-    Equity(Equity)
+    Equity(Equity),
+    FX(FX)
 }
 
 impl Security {
@@ -18,12 +22,16 @@ impl Security {
     pub fn security_type(&self) -> SecurityType {
         match self {
             Self::Equity(_) => SecurityType::Equity,
+            Self::FX(_) => SecurityType::FX
         }
     }
 
     pub fn get_currency(&self) -> Currency {
         match self {
             Self::Equity(x) => {
+                x.get_currency()
+            }
+            Self::FX(x) => {
                 x.get_currency()
             }
         }
@@ -34,6 +42,9 @@ impl Security {
             Self::Equity(x) => {
                 x.minimum_price_variation
             }
+            Self::FX(x) => {
+                x.minimum_price_variation
+            }
         }
     }
 }
@@ -41,19 +52,24 @@ impl Security {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum SecuritySymbol {
-    Equity(String)
+    Equity(String),
+    FX(Currency, Currency)
 }
 
 impl SecuritySymbol {
     pub fn symbol(&self) -> String {
         match self {
             Self::Equity(x) => x.clone(),
+            Self::FX(base, foreign) => {
+                format!("{}{}", base, foreign)
+            }
         }
     }
 
     pub fn security_type(&self) -> SecurityType {
         match self {
             Self::Equity(_) => SecurityType::Equity,
+            Self::FX(..) => SecurityType::FX
         }
     }
 }
@@ -75,6 +91,32 @@ impl Equity {
 
     pub fn get_currency(&self) -> Currency {
         self.currency
+    }
+}
+
+#[derive(Debug, Deserialize, Clone, PartialEq)]
+pub struct FX {
+    base_currency: Currency,
+    foreign_currency: Currency,
+    minimum_price_variation: f64
+}
+
+impl FX {
+
+    pub fn new(
+        base_currency: Currency,
+        foreign_currency: Currency,
+        minimum_price_variation: f64
+    ) -> Self {
+        Self {
+            base_currency,
+            foreign_currency,
+            minimum_price_variation
+        }
+    }
+
+    pub fn get_currency(&self) -> Currency {
+        self.base_currency
     }
 }
 
@@ -259,4 +301,11 @@ pub enum Currency {
     ZAR,
     ZMW,
     ZWL
+}
+
+
+impl std::fmt::Display for Currency {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }

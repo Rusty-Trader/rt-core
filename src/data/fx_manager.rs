@@ -9,6 +9,8 @@ pub struct FXManager<T> where T: DataNumberType {
 
 }
 
+
+/// FX Manager that holds the most up to date currency pairs
 impl<T> FXManager<T> where T: DataNumberType {
 
     /// Provides an FXManager that holds all current fx rates
@@ -64,6 +66,24 @@ impl<T> FXManager<T> where T: DataNumberType {
     }
 }
 
+/// ExchangeRate holds the fx rate of a currency pair
+///
+/// # Example
+///
+/// Two exchange rates can be triangulated using the chain function. An example can be seen below:
+/// ```
+/// use rt_core::data::fx_manager::ExchangeRate;
+/// use rt_core::security::Currency;
+///
+/// fn main() {
+///     let rate_1 = ExchangeRate::new(Currency::GBP, Currency::USD, 4.0);
+///     let rate_2 = ExchangeRate::new(Currency::JPY, Currency::USD, 8.0);
+///
+///     let new_rate = ExchangeRate::chain(&rate_1, &rate_2);
+///
+///     assert_eq!(new_rate, ExchangeRate::new(Currency::GBP, Currency::JPY, 0.5))
+/// }
+/// ```
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ExchangeRate<T> where T: DataNumberType {
     source: Currency,
