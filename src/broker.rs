@@ -125,7 +125,7 @@ impl<T, U, F> Broker for BacktestingBroker<T, U, F> where
                     // self.filled_orders.push(filled.clone());
                     match &self.portfolio {
                         Some(portfolio) => {
-                            portfolio.borrow_mut().update_holding(filled.clone());
+                            portfolio.borrow_mut().update_portfolio(filled.clone());
                         },
                         None => panic!("Portfolio must be connect to broker")
                     }

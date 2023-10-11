@@ -1,5 +1,5 @@
 use std::sync::atomic::AtomicI64;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, RwLock};
 use std::rc::Rc;
 use std::cell::RefCell;
 use chrono::NaiveDateTime;
@@ -19,7 +19,7 @@ use crate::broker::orders::{FilledOrder, MarketOrder, OrderError, Side};
 
 pub struct RTEngine<T, U> where U: Broker + BackTester {
 
-    data_manager: DataManager<f64>,
+    data_manager: Arc<RwLock<DataManager<f64>>>,
 
     portfolio: Rc<RefCell<Portfolio<f64, f64>>>,
 
@@ -65,13 +65,13 @@ impl<T, U> RTEngine<T, U> where
 
         let algo = self.algo.clone();
         
-        while !self.data_manager.is_finished() {
+        while !self.data_manager.read().unwrap().is_finished() {
 
             // Update Data
-            self.data_manager.feeds_send_backtest().unwrap(); // TODO: Process error
+            self.data_manager.write().unwrap().feeds_send_backtest().unwrap(); // TODO: Process error
 
             // Get Slice and update data to Broker
-            let slice = self.data_manager.get_slice();
+            let slice = self.data_manager.write().unwrap().get_slice();
 
             // Get latest portfolio details to fill engine
             // self.broker.send_portfolio_data(PortfolioData{cash: self.portfolio.borrow_mut().get_cash(), holdings: HashMap::new()});
@@ -96,7 +96,7 @@ impl<T, U> RTEngine<T, U> where
 
     fn connect_feeds(&mut self) {
         // TODO: Add error
-        self.data_manager.connect().unwrap()
+        self.data_manager.write().unwrap().connect().unwrap()
     }
 
 
@@ -160,7 +160,7 @@ impl<T, U> RTEngine<T, U> where
             }
         }
 
-        self.data_manager.add_feed(datafeed_builder)
+        self.data_manager.write().unwrap().add_feed(datafeed_builder)
 
     }
 
@@ -263,7 +263,7 @@ impl<T, U> EngineBuilder<T, U> where
         broker.connect(time_sync.clone(), portfolio.clone());
 
         Ok(RTEngine {
-            data_manager: data_manager,
+            data_manager: Arc::new(RwLock::new(data_manager)),
             portfolio: portfolio,
             broker: broker,
             algo: self.algo

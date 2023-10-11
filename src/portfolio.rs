@@ -60,15 +60,15 @@ impl<T> Holding<T> where T: PortfolioNumberType {
 
 pub struct Cash<T> where T: PortfolioNumberType {
     volume: T,
-    rate: T
+    currency: Currency
 }
 
 impl<T> Cash<T> where T: PortfolioNumberType {
 
-    pub fn new(volume: T, rate: T) -> Self {
+    pub fn new(volume: T, currency: Currency) -> Self {
         Self {
             volume,
-            rate
+            currency
         }
     }
     
@@ -121,42 +121,50 @@ impl<T, F> Portfolio<T, F> where
 
     // TODO: move error handing of order into seperate function
     /// Updates the holdings of a portfolio when an order is filled
-    pub fn update_holding(&mut self, order: Result<FilledOrder<T>, OrderError<T>>) where
+    pub fn update_portfolio(&mut self, order: Result<FilledOrder<T>, OrderError<T>>) where
         T: DataNumberType + Into<F> {
 
         // for order in orders {
         match order.clone() {
             Ok(y) => {
-                let order_ccy: Security = self.security_details(&y.get_symbol()).unwrap().clone(); // TODO: Error handling
-                match self.holdings.get_mut(&y.get_symbol()) {
-                    Some(x) => {
-                        match y.get_side() {
-                            Side::Buy => {
-                                x.add(y.get_volume().into());
-                                self.sub_cash(&y, order_ccy.get_currency())
-                            },
-                            Side::Sell => {
-                                x.sub(y.get_volume().into());
-                                self.add_cash(&y, order_ccy.get_currency())
-                            }
-                        }
-                    },
-                    None => {
-                        match y.get_side() {
-                            Side::Buy => {
-                                self.holdings.insert(y.get_symbol(), Holding::new(y.get_symbol(), y.get_volume().into()));
-                                self.sub_cash(&y, order_ccy.get_currency());
-                            },
-                            Side::Sell => {}   
-                        }  
-                    }
-                }
+                 // TODO: Error handling
+                self.update_holdings(y.clone());
 
                 self.filled_orders.insert(y.get_id(), order.clone());
             
             },
             Err(e) => {
                 self.filled_orders.insert(e.get_id(), order.clone());
+            }
+        }
+    }
+
+    fn update_holdings(&mut self, filled: FilledOrder<T>) where
+        T: DataNumberType + Into<F> {
+
+        let order_ccy: Security = self.security_details(&filled.get_symbol()).unwrap().clone();
+
+        match self.holdings.get_mut(&filled.get_symbol()) {
+            Some(x) => {
+                match filled.get_side() {
+                    Side::Buy => {
+                        x.add(filled.get_volume().into());
+                        self.sub_cash(&filled, order_ccy.get_currency())
+                    },
+                    Side::Sell => {
+                        x.sub(filled.get_volume().into());
+                        self.add_cash(&filled, order_ccy.get_currency())
+                    }
+                }
+            },
+            None => {
+                match filled.get_side() {
+                    Side::Buy => {
+                        self.holdings.insert(filled.get_symbol(), Holding::new(filled.get_symbol(), filled.get_volume().into()));
+                        self.sub_cash(&filled, order_ccy.get_currency());
+                    },
+                    Side::Sell => {}
+                }
             }
         }
     }
@@ -252,7 +260,7 @@ mod tests {
 
 
         // Act
-        portfolio.update_holding(filled_order);
+        portfolio.update_portfolio(filled_order);
         let result_cash = *portfolio.get_cash(Currency::USD).unwrap();
         let result_holdings = portfolio.holdings.get(&SecuritySymbol::Equity(String::from("Test"))).unwrap();
 
@@ -306,7 +314,7 @@ mod tests {
         let expected_holdings = &Holding::Equity(0.0);
 
         // Act
-        portfolio.update_holding(filled_order);
+        portfolio.update_portfolio(filled_order);
         let result_cash = *portfolio.get_cash(Currency::USD).unwrap();
         let result_holdings = portfolio.holdings.get(&SecuritySymbol::Equity(String::from("Test"))).unwrap();
 

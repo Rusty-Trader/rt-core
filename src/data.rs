@@ -99,7 +99,7 @@ pub struct DataSymbolProperties {
     pub security_type: SecurityType,
     pub description: String,
     pub quote_currency: Currency,
-    pub foreign_currency: Currency,
+    pub foreign_currency: Option<Currency>,
     pub contract_multiplier: f64,
     pub minimum_price_variation: f64,
     pub lot_size: f64,
@@ -124,7 +124,7 @@ impl DataSymbolProperties {
                 Security::FX(
                     FX::new(
                         self.quote_currency,
-                        self.foreign_currency,
+                        self.foreign_currency.unwrap(),
                         self.minimum_price_variation
                     )
                 )
