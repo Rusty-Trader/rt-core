@@ -90,6 +90,7 @@ impl<T, U, F> BasicFillEngine<T, U, F>
     where T: DataNumberType,
           U: SlippageModel,
           F: PortfolioNumberType + Into<T> {
+
     fn check_funds(&self, order: MarketOrder<T>, price: T) -> Result<(), OrderError<T>> {
         // TODO: Add ability for account margin
         // TODO: Check funds for more than just Market Order

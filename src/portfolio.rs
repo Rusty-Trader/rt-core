@@ -58,6 +58,7 @@ impl<T> Holding<T> where T: PortfolioNumberType {
 
 }
 
+/// A struct that represents an amount of cash in a specific currency.
 pub struct Cash<T> where T: PortfolioNumberType {
     volume: T,
     currency: Currency
@@ -187,30 +188,37 @@ impl<T, F> Portfolio<T, F> where
         }
     }
     
+    /// Return the cash holdings for a given holding.
     pub fn get_cash(&self, currency: Currency) -> Option<&F> {
         self.cash_holdings.get(&currency)
     }
 
+    /// Set the cash holdings of the portfolio.
     pub fn set_cash(&mut self, currency: Currency, cash: T) where T: Into<F> {
         self.cash_holdings.insert(currency, cash.into());
     }
 
+    /// Return all the filled orders that occurred during the session.
     pub fn get_filled_orders(&self) -> &HashMap<String, Result<FilledOrder<T>, OrderError<T>>> {
         &self.filled_orders
     }
 
+    /// Return the number of units held of a given security.
     pub fn get_holding(&self, symbol: SecuritySymbol) -> Option<Holding<F>> {
         self.holdings.get(&symbol).map(|x| x.to_owned())
     }
 
+    /// Register a security with a portfolio to provide information such as currency and lot information.
     pub fn register_security(&mut self, symbol: SecuritySymbol, details: Security) {
         self.registered_securities.insert(symbol, details);
     }
 
+    /// Return the security details for a given security
     pub fn security_details(&self, symbol: &SecuritySymbol) -> Option<&Security> {
         self.registered_securities.get(symbol)
     }
 
+    /// Checks whether a security has been registered with the portfolio
     pub fn is_registered(&self, symbol: SecuritySymbol) -> bool {
         self.registered_securities.contains_key(&symbol)
     }

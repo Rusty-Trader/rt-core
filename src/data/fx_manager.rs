@@ -4,16 +4,16 @@ use crate::error::Error;
 use crate::security::Currency;
 
 pub struct FXManager<T> where T: DataNumberType {
-
+    /// HashMap that stores the exchange rate for each currency pair.
     data: HashMap<(Currency, Currency), ExchangeRate<T>>
 
 }
 
 
-/// FX Manager that holds the most up to date currency pairs
+/// FX Manager that holds the most up to date currency pairs.
 impl<T> FXManager<T> where T: DataNumberType {
 
-    /// Provides an FXManager that holds all current fx rates
+    /// Provides an FXManager that holds all current fx rates.
     pub fn new() -> Self {
         Self {
            data: HashMap::new()
@@ -66,7 +66,7 @@ impl<T> FXManager<T> where T: DataNumberType {
     }
 }
 
-/// ExchangeRate holds the fx rate of a currency pair
+/// ExchangeRate holds the fx rate of a currency pair.
 ///
 /// # Example
 ///

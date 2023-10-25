@@ -1,8 +1,7 @@
 use std::fmt::Formatter;
-use std::ptr::write;
 use serde::Deserialize;
 
-
+/// The type of securityn enum to represent the type of security.
 #[derive(Debug, Deserialize, Clone, Copy, PartialEq, Eq)]
 pub enum SecurityType {
     #[serde(rename(deserialize = "equity"))]
@@ -10,7 +9,7 @@ pub enum SecurityType {
     FX
 }
 
-
+/// Enum that holds information about different types of securities.
 #[derive(Debug, Deserialize, Clone, PartialEq)]
 pub enum Security {
     Equity(Equity),
@@ -50,6 +49,7 @@ impl Security {
 }
 
 
+/// Enum to represent the symbol of a security.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum SecuritySymbol {
     Equity(String),
@@ -74,6 +74,7 @@ impl SecuritySymbol {
     }
 }
 
+/// Holds information related to equities.
 #[derive(Debug, Deserialize, Clone, PartialEq)]
 pub struct Equity {
     currency: Currency,
@@ -89,11 +90,13 @@ impl Equity {
         }
     }
 
+    /// Returns the currency of the Equity.
     pub fn get_currency(&self) -> Currency {
         self.currency
     }
 }
 
+/// Holds information relating to Forex.
 #[derive(Debug, Deserialize, Clone, PartialEq)]
 pub struct FX {
     base_currency: Currency,
@@ -115,11 +118,13 @@ impl FX {
         }
     }
 
+    /// Returns the currency of the Forex pair.
     pub fn get_currency(&self) -> Currency {
         self.base_currency
     }
 }
 
+/// Enum that represents a currency.
 #[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq, Hash)]
 pub enum Currency {
     AED,
