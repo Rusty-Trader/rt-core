@@ -16,10 +16,7 @@ use crate::security::SecuritySymbol;
 use crate::utils::Merge;
 
 
-
-
 pub trait FillEngine {
-
     type NumberType: DataNumberType;
 
     type PortfolioNumberType: PortfolioNumberType;
@@ -45,7 +42,7 @@ pub trait FillEngine {
     // fn check_funds(&self, order: MarketOrder<Self::NumberType>, price: Self::NumberType) -> Result<(), OrderError<Self::NumberType>>;
 
     fn fill_market_order(&self, order: MarketOrder<Self::NumberType>) -> Option<Result<FilledOrder<Self::NumberType>, OrderError<Self::NumberType>>>;
-    
+
     fn add_datapoint(&mut self, datapoint: DataPoint<Self::NumberType>);
 
     fn get_commission(&self, order: OrderType<Self::NumberType>) -> Self::NumberType;
@@ -63,15 +60,13 @@ pub trait FillEngine {
     // fn get_best_ask_price(&self, datapoint: &DataPoint<Self::NumberType>) -> Self::NumberType;
 
     // fn get_best_bid_price(&self, datapoint: &DataPoint<Self::NumberType>) -> Self::NumberType;
-
 }
 
 
-pub struct BasicFillEngine<T, U, F> where 
+pub struct BasicFillEngine<T, U, F> where
     T: DataNumberType,
     U: SlippageModel,
     F: PortfolioNumberType {
-
     time: TimeSync,
 
     data_receiver: Option<Receiver<DataPoint<T>>>,
@@ -88,36 +83,36 @@ pub struct BasicFillEngine<T, U, F> where
 
     commission: T,
 
-    portfolio: Option<Rc<RefCell<Portfolio<T, F>>>>
-
+    portfolio: Option<Rc<RefCell<Portfolio<T, F>>>>,
 }
 
 impl<T, U, F> BasicFillEngine<T, U, F>
     where T: DataNumberType,
-    U: SlippageModel,
-    F: PortfolioNumberType + Into<T> {
-
+          U: SlippageModel,
+          F: PortfolioNumberType + Into<T> {
     fn check_funds(&self, order: MarketOrder<T>, price: T) -> Result<(), OrderError<T>> {
         // TODO: Add ability for account margin
+        // TODO: Check funds for more than just Market Order
+        // TODO: Split functions between funds and holdings
         // Check account has enough money
         if let Some(portfolio) = &self.portfolio {
             let currency = portfolio.borrow().security_details(&order.get_symbol()).unwrap().get_currency(); // TODO: Add error handling
             match order.get_side() {
                 Side::Buy => {
                     let cash: T = portfolio.borrow().get_cash(currency).unwrap().clone().into();
-                    if  cash < (order.get_volume() * price) {
-                        return Err(OrderError::new(OrderType::MarketOrder(order), self.time.get_time(), "Insufficient Funds"))
+                    if cash < (order.get_volume() * price) {
+                        return Err(OrderError::new(OrderType::MarketOrder(order), self.time.get_time(), "Insufficient Funds"));
                     }
-                },
+                }
                 Side::Sell => {
                     match portfolio.borrow().get_holding(order.get_symbol()) {
                         Some(amnt) => {
                             if amnt.get_volume().into() < order.get_volume() {
-                                return Err(OrderError::new(OrderType::MarketOrder(order), self.time.get_time(), "Insufficient Holdings"))
+                                return Err(OrderError::new(OrderType::MarketOrder(order), self.time.get_time(), "Insufficient Holdings"));
                             }
-                        },
+                        }
                         None => {
-                            return Err(OrderError::new(OrderType::MarketOrder(order), self.time.get_time(), "No Holdings"))
+                            return Err(OrderError::new(OrderType::MarketOrder(order), self.time.get_time(), "No Holdings"));
                         }
                     }
                 }
@@ -128,32 +123,28 @@ impl<T, U, F> BasicFillEngine<T, U, F>
         Ok(())
         //Err(OrderError::new(OrderType::MarketOrder(order), self.time.get_time(), "No Portfolio added to engine"))
     }
-
 }
 
-impl<T, U, F> BackTester for BasicFillEngine<T, U, F> 
+impl<T, U, F> BackTester for BasicFillEngine<T, U, F>
     where T: DataNumberType,
-    U: SlippageModel<NumberType = T>,
-    F: PortfolioNumberType + Into<T> {
-
+          U: SlippageModel<NumberType=T>,
+          F: PortfolioNumberType + Into<T> {
     fn next_cycle(&mut self) -> Result<(), crate::error::Error> {
-
         let mut tmp = Vec::new();
 
         match &self.data_receiver {
             Some(receiver) => {
-
                 for point in receiver.try_iter() {
                     tmp.push(point);
                 }
-            },
+            }
             None => (),
         }
 
         for point in tmp {
             self.add_datapoint(point);
         }
-            // .collect::<Option<Vec<DataPoint<T>>>>();
+        // .collect::<Option<Vec<DataPoint<T>>>>();
 
         for message in &self.received_messages {
             match message {
@@ -168,7 +159,6 @@ impl<T, U, F> BackTester for BasicFillEngine<T, U, F>
         let mut remove = Vec::new();
 
         for (id, order) in &self.open_orders {
-
             if let Some(x) = &self.check_fill(order.clone()) {
                 self.filled_orders.push(BrokerMessage::FilledOrder(x.clone()));
                 // let _ = match &self.sender {
@@ -181,24 +171,23 @@ impl<T, U, F> BackTester for BasicFillEngine<T, U, F>
             // match &self.check_fill(order.clone()) {
 
             //     Some()
-                // Ok(y) => {
-                //     if let Some(x) =  y {
-                //         // TODO: Add error
-                //         let _ = match &self.sender {
-                //             Some(sender) => sender.send(BrokerMessage::FilledOrder(Ok(x.clone()))).map_err(|_| BrokerError::FillEngineError(format!("Sender error"))),
-                //             None => Err(BrokerError::FillEngineError(format!("Fill ending must be connected")))?,
-                //         };
-                //         remove.push(id.clone())
-                //     }
-                // },
-                // Err(e) => {
-                //     let _ = match &self.sender {
-                //         Some(sender) => sender.send(BrokerMessage::FilledOrder(Err(e.clone()))).map_err(|_| BrokerError::FillEngineError(format!("Sender error"))),
-                //         None => Err(BrokerError::FillEngineError(format!("Fill ending must be connected")))?,
-                //     };
-                //     remove.push(id.clone())
-                // }
-
+            // Ok(y) => {
+            //     if let Some(x) =  y {
+            //         // TODO: Add error
+            //         let _ = match &self.sender {
+            //             Some(sender) => sender.send(BrokerMessage::FilledOrder(Ok(x.clone()))).map_err(|_| BrokerError::FillEngineError(format!("Sender error"))),
+            //             None => Err(BrokerError::FillEngineError(format!("Fill ending must be connected")))?,
+            //         };
+            //         remove.push(id.clone())
+            //     }
+            // },
+            // Err(e) => {
+            //     let _ = match &self.sender {
+            //         Some(sender) => sender.send(BrokerMessage::FilledOrder(Err(e.clone()))).map_err(|_| BrokerError::FillEngineError(format!("Sender error"))),
+            //         None => Err(BrokerError::FillEngineError(format!("Fill ending must be connected")))?,
+            //     };
+            //     remove.push(id.clone())
+            // }
         }
 
         self.open_orders.retain(|f, _| !remove.contains(f));
@@ -208,19 +197,18 @@ impl<T, U, F> BackTester for BasicFillEngine<T, U, F>
 }
 
 
-impl<T, U, F> FillEngine for BasicFillEngine<T, U, F> where 
+impl<T, U, F> FillEngine for BasicFillEngine<T, U, F> where
     T: DataNumberType,
-    U: SlippageModel<NumberType = T>,
+    U: SlippageModel<NumberType=T>,
     F: PortfolioNumberType + Into<T> {
-
     type NumberType = T;
 
     type PortfolioNumberType = F;
 
-    type SlippageType = U; 
+    type SlippageType = U;
 
     fn new(commission: Self::NumberType, slippage: Self::SlippageType) -> Self {
-        Self { 
+        Self {
             time: TimeSync::new(0, crate::data::Resolution::Day),
             data_receiver: None,
             data_lines: HashMap::new(),
@@ -229,7 +217,7 @@ impl<T, U, F> FillEngine for BasicFillEngine<T, U, F> where
             received_messages: Vec::new(),
             slippage,
             commission,
-            portfolio: None
+            portfolio: None,
         }
     }
 
@@ -248,19 +236,16 @@ impl<T, U, F> FillEngine for BasicFillEngine<T, U, F> where
     }
 
     fn fill_market_order(&self, order: MarketOrder<Self::NumberType>) -> Option<Result<FilledOrder<Self::NumberType>, OrderError<Self::NumberType>>> {
-        
         let last_data = self.data_lines.get(&order.get_symbol());
 
         if let Some(x) = last_data {
-
             if x.get_time() > order.get_timestamp() {
-
                 let price = self.slippage.get_slippage_approximation(x, order.clone());
 
                 if let Err(e) = self.check_funds(order.clone(), price) {
-                    return Some(Err(e))
+                    return Some(Err(e));
                 }
-                
+
                 // TODO: Remove match
                 match order.get_side() {
                     Side::Buy => {
@@ -270,10 +255,9 @@ impl<T, U, F> FillEngine for BasicFillEngine<T, U, F> where
                             order.get_volume(),
                             price,
                             self.get_commission(OrderType::MarketOrder(order.clone())),
-                            false
-                        )))
-
-                    },
+                            false,
+                        )));
+                    }
                     Side::Sell => {
                         return Some(Ok(FilledOrder::new(
                             OrderType::MarketOrder(order.clone()),
@@ -281,17 +265,15 @@ impl<T, U, F> FillEngine for BasicFillEngine<T, U, F> where
                             order.get_volume(),
                             price,
                             self.get_commission(OrderType::MarketOrder(order.clone())),
-                            false
-                        )))
-                    },
+                            false,
+                        )));
+                    }
                 }
             }
         }
 
         None
-
     }
-
 
 
     fn get_commission(&self, order: OrderType<Self::NumberType>) -> Self::NumberType {
@@ -307,7 +289,6 @@ impl<T, U, F> FillEngine for BasicFillEngine<T, U, F> where
         } else {
             self.data_lines.insert(datapoint.get_symbol(), datapoint);
         }
-
     }
 
     fn add_message(&mut self, message: BrokerMessage<Self::NumberType>) {
@@ -319,7 +300,7 @@ impl<T, U, F> FillEngine for BasicFillEngine<T, U, F> where
     }
 
     // fn process_received_messages(&mut self) {
-        
+
     //     if let Some(receiver) = &self.receiver {
     //         for msg in receiver.try_recv() {
     //             match msg {
@@ -357,9 +338,72 @@ mod tests {
     use super::*;
 
     use crate::{broker::slippage::simple_model::SimpleSlippageModel, data::Resolution};
-    use crate::security::Currency;
+    use crate::security::{Currency, Equity, Security};
     use crate::test_utils::setup_data_line_daily;
-    
+
+
+    #[test]
+    fn test_fill_engine_check_funds() {
+        // TODO: Need to register securities
+
+
+        // Arrange
+        let slippage_model = SimpleSlippageModel::new(0.01);
+
+        let mut portfolio: Portfolio<f64, f64> = Portfolio::new(Currency::USD);
+
+        portfolio.set_cash(Currency::USD, 500000 as f64);
+        portfolio.register_security(
+            SecuritySymbol::Equity(String::from("AAPL")),
+            Security::Equity(Equity::new(Currency::USD, 0.01)),
+        );
+
+
+        let mut basic_fill_engine = BasicFillEngine::new(0.01, slippage_model);
+
+
+        basic_fill_engine.connect_to_engine(TimeSync::new(1000, Resolution::Day), Rc::new(RefCell::new(portfolio)));
+
+        let mut order = MarketOrder::new("1", SecuritySymbol::Equity(String::from("AAPL")), 1649289600000, 1000.0, Side::Buy);
+
+        let expected = Ok(());
+
+        // Act
+        let result = basic_fill_engine.check_funds(order, 100.0);
+
+        // Assert
+        assert_eq!(result, expected)
+    }
+
+    #[test]
+    fn test_fill_engine_check_funds_insufficient_cash() {
+
+        // Arrange
+        let slippage_model = SimpleSlippageModel::new(0.01);
+
+        let mut portfolio: Portfolio<f64, f64> = Portfolio::new(Currency::USD);
+
+        portfolio.set_cash(Currency::USD, 500000 as f64);
+        portfolio.register_security(
+            SecuritySymbol::Equity(String::from("AAPL")),
+            Security::Equity(Equity::new(Currency::USD, 0.01)),
+        );
+
+        let mut basic_fill_engine = BasicFillEngine::new(0.01, slippage_model);
+
+        basic_fill_engine.connect_to_engine(TimeSync::new(1000, Resolution::Day), Rc::new(RefCell::new(portfolio)));
+
+        let mut order = MarketOrder::new("1", SecuritySymbol::Equity(String::from("AAPL")), 1649289600000, 1000.0, Side::Buy);
+
+        let expected = Err(OrderError::new(OrderType::MarketOrder(order.clone()), 1000, "Insufficient Funds"));
+
+        // Act
+        let result = basic_fill_engine.check_funds(order, 1000.0);
+
+        // Assert
+        assert_eq!(result, expected)
+    }
+
     #[test]
     fn test_basic_fill_engine_check_fill() {
 
@@ -369,6 +413,10 @@ mod tests {
         let mut portfolio: Portfolio<f64, f64> = Portfolio::new(Currency::USD);
 
         portfolio.set_cash(Currency::USD, 500000 as f64);
+        portfolio.register_security(
+            SecuritySymbol::Equity(String::from("AAPL")),
+            Security::Equity(Equity::new(Currency::USD, 0.01)),
+        );
 
         let mut basic_fill_engine = BasicFillEngine::new(0.01, slippage_model);
 
@@ -388,7 +436,7 @@ mod tests {
             1000.0,
             171.160004 + 0.01 * 171.160004,
             0.01,
-            false
+            false,
         ));
 
         // Act
@@ -396,7 +444,6 @@ mod tests {
 
         // Assert
         assert_eq!(result, expected)
-        
     }
 
 
@@ -406,7 +453,11 @@ mod tests {
         // Arrange
         let slippage_model = SimpleSlippageModel::new(0.01);
 
-        let portfolio: Portfolio<f64, f64> = Portfolio::new(Currency::USD);
+        let mut portfolio: Portfolio<f64, f64> = Portfolio::new(Currency::USD);
+        portfolio.register_security(
+            SecuritySymbol::Equity(String::from("AAPL")),
+            Security::Equity(Equity::new(Currency::USD, 0.01)),
+        );
 
         let mut basic_fill_engine = BasicFillEngine::new(0.01, slippage_model);
 
@@ -427,8 +478,6 @@ mod tests {
 
         // Assert
         assert_eq!(result, expected)
-        
     }
-
 }
 

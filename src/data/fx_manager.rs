@@ -79,7 +79,7 @@ impl<T> FXManager<T> where T: DataNumberType {
 ///     let rate_1 = ExchangeRate::new(Currency::GBP, Currency::USD, 4.0);
 ///     let rate_2 = ExchangeRate::new(Currency::JPY, Currency::USD, 8.0);
 ///
-///     let new_rate = ExchangeRate::chain(&rate_1, &rate_2);
+///     let new_rate = ExchangeRate::chain(&rate_1, &rate_2).unwrap();
 ///
 ///     assert_eq!(new_rate, ExchangeRate::new(Currency::GBP, Currency::JPY, 0.5))
 /// }
