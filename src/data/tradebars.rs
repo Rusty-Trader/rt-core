@@ -8,6 +8,7 @@ use super::{Resolution, FillFwd};
 use crate::security::SecuritySymbol;
 use crate::utils::Merge;
 
+/// Holds a collection of TradeBar for different securities for a Slice in time.
 #[derive(Debug, Clone)]
 pub struct TradeBars<T> where T: DataNumberType {
 
@@ -49,10 +50,6 @@ impl<T> TradeBars<T> where T: DataNumberType {
         !self.data.is_empty()
     }
 
-    // pub fn map<U, F>(&self, f: F) -> Option<U> where F: FnOnce(T) -> U {
-
-    // }
-
 }
 
 impl<T: fmt::Debug> fmt::Display for TradeBars<T> where T: DataNumberType{
@@ -78,24 +75,33 @@ impl<T> Merge for TradeBars<T> where T: DataNumberType {
 }
 
 
-
+/// Holds OHLCV data for a single time point.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct TradeBar<T> where T: DataNumberType {
 
+    /// Volume of the security traded within the time period
     pub volume: T,
 
+    /// Open price of the security.
     pub open: T,
 
+    /// Highest price reached by the security during the time period.
     pub high: T,
 
+    /// Lowest price reached by the security during the time period.
     pub low: T,
 
+    /// Closing price of the security.
     pub close: T,
 
+    // TODO: Check that it is milliseconds
+    /// Start of the period given as milliseconds from EPOCH.
     pub start_time: i64,
 
+    /// End of the period given as milliseconds from EPOCH
     pub end_time: i64,
 
+    /// Boolean indicating whether the values are actually from the previous bar but repeated due to no new data.
     pub is_fill_fwd: bool,
 
 }
@@ -110,7 +116,7 @@ impl<T> TradeBar<T> where T: DataNumberType {
         start_time: i64,
         end_time: i64,
         is_fill_fwd: bool,
-    ) -> TradeBar<T> {
+    ) -> Self {
         TradeBar {
             volume,
             open,
