@@ -9,6 +9,7 @@ use std::marker::PhantomData;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{Sender, Receiver, SendError};
 use tracing::{event, Level};
+use crate::DataNumberType;
 
 use super::DataPoint;
 use super::DataType;
@@ -23,7 +24,7 @@ use crate::rtengine::RunMode;
 
 pub trait DataFeed {
 
-    type NumberType: Clone;
+    type NumberType: DataNumberType;
 
     fn get_symbols(&self) -> &Vec<(SecuritySymbol, String)>;
     fn connect(&mut self, sender: Sender<DataPoint<Self::NumberType>>, mode: RunMode) -> Result<(), DataError>;
@@ -35,7 +36,7 @@ pub trait DataFeedBuilder {
 
     type Output;
 
-    type NumberType: Clone;
+    type NumberType: DataNumberType;
 
     fn build(self) -> Result<Self::Output, DataError>;
 
@@ -50,7 +51,7 @@ pub trait DataFeedBuilder {
     fn get_symbols(&self) -> &Vec<(SecuritySymbol, String)>;
 }
 
-pub struct CSVDataFeed<T, U> where T: Clone {
+pub struct CSVDataFeed<T, U> where T: DataNumberType {
     path: PathBuf,
     symbols: Vec<(SecuritySymbol, String)>,
     data: Vec<DataPoint<T>>,
@@ -63,7 +64,7 @@ pub struct CSVDataFeed<T, U> where T: Clone {
 
 
 impl<T, U> CSVDataFeed<T, U> where
-    T: Clone,
+    T: DataNumberType,
     U: serde::de::DeserializeOwned {
 
 
@@ -86,7 +87,7 @@ impl<T, U> CSVDataFeed<T, U> where
 
 impl<T, U> DataFeed for CSVDataFeed<T, U>  where 
     U: serde::de::DeserializeOwned + IntoDataPoint<NumberType = T>,
-    T: Clone {
+    T: DataNumberType {
 
     type NumberType = T;
 
@@ -143,7 +144,7 @@ impl<T, U> DataFeed for CSVDataFeed<T, U>  where
 }
 
 
-pub struct CSVDataFeedBuilder<T, U> where T: Clone {
+pub struct CSVDataFeedBuilder<T, U> where T: DataNumberType {
 
     path: PathBuf,
     symbols: Vec<(SecuritySymbol, String)>,
@@ -158,7 +159,7 @@ pub struct CSVDataFeedBuilder<T, U> where T: Clone {
 }
 
 
-impl<T, U> CSVDataFeedBuilder<T, U> where T: Clone {
+impl<T, U> CSVDataFeedBuilder<T, U> where T: DataNumberType {
 
     pub fn new(symbol: SecuritySymbol, market: &str, resolution: Resolution) -> CSVDataFeedBuilder<T, U> {
 
@@ -207,7 +208,7 @@ impl<T, U> CSVDataFeedBuilder<T, U> where T: Clone {
 
 }
 
-impl<T, U> DataFeedBuilder for CSVDataFeedBuilder<T, U> where T: Clone {
+impl<T, U> DataFeedBuilder for CSVDataFeedBuilder<T, U> where T: DataNumberType {
 
     type Output = CSVDataFeed<T, U>;
 

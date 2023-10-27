@@ -1,10 +1,10 @@
 use std::sync::atomic::AtomicI64;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, RwLock};
 use std::rc::Rc;
 use std::cell::RefCell;
 use chrono::NaiveDateTime;
 
-use crate::security::{Security, SecuritySymbol};
+use crate::security::{Currency, Security, SecuritySymbol};
 use crate::algorithm::Algo;
 use crate::broker::fill::engine::FillEngine;
 use crate::data::{DataSymbolProperties, deserialize_symbol_properties, Resolution};
@@ -19,7 +19,7 @@ use crate::broker::orders::{FilledOrder, MarketOrder, OrderError, Side};
 
 pub struct RTEngine<T, U> where U: Broker + BackTester {
 
-    data_manager: DataManager<f64>,
+    data_manager: Arc<RwLock<DataManager<f64>>>,
 
     portfolio: Rc<RefCell<Portfolio<f64, f64>>>,
 
@@ -65,13 +65,13 @@ impl<T, U> RTEngine<T, U> where
 
         let algo = self.algo.clone();
         
-        while !self.data_manager.is_finished() {
+        while !self.data_manager.read().unwrap().is_finished() {
 
             // Update Data
-            self.data_manager.feeds_send_backtest().unwrap(); // TODO: Process error
+            self.data_manager.write().unwrap().feeds_send_backtest().unwrap(); // TODO: Process error
 
             // Get Slice and update data to Broker
-            let slice = self.data_manager.get_slice();
+            let slice = self.data_manager.write().unwrap().get_slice();
 
             // Get latest portfolio details to fill engine
             // self.broker.send_portfolio_data(PortfolioData{cash: self.portfolio.borrow_mut().get_cash(), holdings: HashMap::new()});
@@ -96,7 +96,7 @@ impl<T, U> RTEngine<T, U> where
 
     fn connect_feeds(&mut self) {
         // TODO: Add error
-        self.data_manager.connect().unwrap()
+        self.data_manager.write().unwrap().connect().unwrap()
     }
 
 
@@ -160,7 +160,7 @@ impl<T, U> RTEngine<T, U> where
             }
         }
 
-        self.data_manager.add_feed(datafeed_builder)
+        self.data_manager.write().unwrap().add_feed(datafeed_builder)
 
     }
 
@@ -187,12 +187,12 @@ impl<T, U> RTEngine<T, U> where
         round_down(price, min_var)
     }
 
-    pub fn set_cash(&mut self, cash: f64) {
-        self.portfolio.borrow_mut().set_cash(cash.into())
+    pub fn set_cash(&mut self, currency: Currency, cash: f64) {
+        self.portfolio.borrow_mut().set_cash(currency, cash.into())
     }
 
-    pub fn cash_balance(&self) -> f64 {
-        self.portfolio.borrow_mut().get_cash()
+    pub fn cash_balance(&self, currency: Currency) -> Option<f64> {
+        self.portfolio.borrow_mut().get_cash(currency).map(|x| x.to_owned())
     }
 
     pub fn get_holding(&self, symbol: SecuritySymbol) -> Option<Holding<f64>> {
@@ -252,7 +252,7 @@ impl<T, U> EngineBuilder<T, U> where
             .ok_or(Error::IncompleteBuilder(format!("Engine must have a Run Mode")))?);
             // .ok_or(Error::IncompleteBuilder(format!("Engine must have a Run Mode")))?
 
-        let portfolio: Rc<RefCell<Portfolio<f64, f64>>> = Rc::new(RefCell::new(Portfolio::new()));
+        let portfolio: Rc<RefCell<Portfolio<f64, f64>>> = Rc::new(RefCell::new(Portfolio::new(Currency::USD)));
 
         // &mut self.broker.map(|x| x.connect_to_data(data_manager.with_fill_sender()));
 
@@ -263,7 +263,7 @@ impl<T, U> EngineBuilder<T, U> where
         broker.connect(time_sync.clone(), portfolio.clone());
 
         Ok(RTEngine {
-            data_manager: data_manager,
+            data_manager: Arc::new(RwLock::new(data_manager)),
             portfolio: portfolio,
             broker: broker,
             algo: self.algo

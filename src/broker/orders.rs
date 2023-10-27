@@ -9,18 +9,23 @@ pub trait Order {
     // fn is_filled(&self) -> bool;
 
     // fn set_timestamp(&mut self, timestamp: i64);
-
+    /// Returns the order id.
     fn get_id(&self) -> String;
 
+    /// Returns the symbol of the security that the order is for.
     fn get_symbol(&self) -> SecuritySymbol;
 
+    /// Returns the timestamp of when the order was placed
     fn get_timestamp(&self) -> i64;
 
+    /// Returns the number of units of the underlying security that the order is for.
     fn get_volume(&self) -> Self::NumberType;
 
+    /// Returns an enum indicating whether the order is a "Buy" or "Sell"
     fn get_side(&self) -> Side;
 }
 
+/// An enum that represents the order type.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OrderType<T> where T: DataNumberType {
     MarketOrder(MarketOrder<T>)
@@ -235,7 +240,7 @@ impl<T> std::fmt::Display for OrderError<T> where T: DataNumberType {
 
 impl<T> std::error::Error for OrderError<T> where T: DataNumberType {}
 
-
+/// Enum representing the side of the order.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Side {
     Buy,

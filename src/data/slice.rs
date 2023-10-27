@@ -7,7 +7,7 @@ use crate::{DataNumberType, utils::Merge};
 use crate::security::SecuritySymbol;
 
 #[derive(Debug, Clone)]
-pub struct Slice<T> {
+pub struct Slice<T> where T: DataNumberType {
 
     end_time: i64,
 
@@ -92,9 +92,9 @@ impl<T: fmt::Debug> fmt::Display for Slice<T> where T: DataNumberType {
 //     }
 // }
 
-impl<T> Eq for Slice<T> {}
+impl<T> Eq for Slice<T> where T: DataNumberType {}
 
-impl<T> PartialEq for Slice<T> {
+impl<T> PartialEq for Slice<T> where T: DataNumberType {
 
     fn eq(&self, other: &Self) -> bool {
         self.end_time == other.end_time
@@ -102,20 +102,20 @@ impl<T> PartialEq for Slice<T> {
 
 }
 
-impl<T> PartialOrd for Slice<T> {
+impl<T> PartialOrd for Slice<T> where T: DataNumberType {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.end_time.cmp(&other.end_time))
     }
 }
 
 
-impl<T> Ord for Slice<T> {
+impl<T> Ord for Slice<T> where T: DataNumberType {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.end_time.cmp(&other.end_time)
     }
 }
 
-impl<T> Merge for Slice<T> {
+impl<T> Merge for Slice<T> where T: DataNumberType {
 
     fn merge(&mut self, other: Self) {
         self.bars.merge(other.bars)

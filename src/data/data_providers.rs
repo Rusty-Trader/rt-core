@@ -1,6 +1,7 @@
 use rust_decimal::{Decimal};
 use serde::{Serialize, Deserialize};
 use chrono::{NaiveDate, Days, Months, Datelike};
+use crate::DataNumberType;
 
 use crate::security::SecuritySymbol;
 
@@ -8,14 +9,14 @@ use super::{TradeBar, Resolution, DataPoint, DataType};
 
 pub trait IntoTradeBar {
 
-    type NumberType;
+    type NumberType: DataNumberType;
 
     fn to_tradebar(&self) -> TradeBar<Self::NumberType>;
 }
 
 pub trait IntoDataPoint {
 
-    type NumberType: Clone;
+    type NumberType: DataNumberType;
 
     fn to_datapoint(self, symbol: SecuritySymbol, period: Resolution) -> DataPoint<Self::NumberType>;
 }
@@ -48,7 +49,7 @@ fn period_default() -> Resolution {
     Resolution::Day
 }
 
-impl<T> IntoDataPoint for YahooFinanceTradeBar<T> where T: Clone {
+impl<T> IntoDataPoint for YahooFinanceTradeBar<T> where T: DataNumberType {
 
     type NumberType = T;
 
@@ -66,7 +67,7 @@ impl<T> IntoDataPoint for YahooFinanceTradeBar<T> where T: Clone {
     }
 }
 
-impl<T> From<YahooFinanceTradeBar<T>> for TradeBar<T> {
+impl<T> From<YahooFinanceTradeBar<T>> for TradeBar<T> where T: DataNumberType {
     fn from(item: YahooFinanceTradeBar<T>) -> Self {
         TradeBar {
             volume: item.volume,

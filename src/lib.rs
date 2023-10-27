@@ -1,6 +1,7 @@
 use std::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
 use std::cmp::{PartialEq, PartialOrd};
 use std::fmt::Debug;
+use rust_decimal::Decimal;
 
 pub mod data;
 pub mod error;
@@ -11,6 +12,7 @@ mod time;
 pub mod portfolio;
 pub mod broker;
 pub mod security;
+mod results;
 
 
 pub trait NumberType: Copy + 
@@ -28,15 +30,21 @@ pub trait NumberType: Copy +
 impl NumberType for f64 {}
 impl NumberType for f32 {}
 
+impl NumberType for Decimal {}
+
 pub trait DataNumberType: NumberType {}
 
 impl DataNumberType for f64 {}
 impl DataNumberType for f32 {}
 
+impl DataNumberType for Decimal {}
+
 pub trait PortfolioNumberType: NumberType {}
 
 impl PortfolioNumberType for f64 {}
 impl PortfolioNumberType for f32 {}
+
+impl PortfolioNumberType for Decimal {}
 
 
 #[cfg(test)]
