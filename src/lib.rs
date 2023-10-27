@@ -69,8 +69,6 @@ pub mod test_utils {
                     1649030400000,
                     1649116800000,
                     false,
-                    SecuritySymbol::Equity(String::from("AAPL")),
-                    Resolution::Day
                 )),
                 Resolution::Day
             )
@@ -89,8 +87,6 @@ pub mod test_utils {
                     1649116800000,
                     1649203200000,
                     false,
-                    SecuritySymbol::Equity(String::from("AAPL")),
-                    Resolution::Day
                 )),
                 Resolution::Day
             )
@@ -109,8 +105,6 @@ pub mod test_utils {
                     1649203200000,
                     1649289600000,
                     false,
-                    SecuritySymbol::Equity(String::from("AAPL")),
-                    Resolution::Day
                 )),
                 Resolution::Day
             )
@@ -129,8 +123,6 @@ pub mod test_utils {
                     1649289600000,
                     1649376000000,
                     false,
-                    SecuritySymbol::Equity(String::from("AAPL")),
-                    Resolution::Day
                 )),
                 Resolution::Day
             )

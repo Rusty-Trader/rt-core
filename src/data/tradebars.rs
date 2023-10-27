@@ -79,7 +79,7 @@ impl<T> Merge for TradeBars<T> where T: DataNumberType {
 
 
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct TradeBar<T> where T: DataNumberType {
 
     pub volume: T,
@@ -98,10 +98,6 @@ pub struct TradeBar<T> where T: DataNumberType {
 
     pub is_fill_fwd: bool,
 
-    pub symbol: SecuritySymbol,
-
-    pub period: Resolution,
-
 }
 
 impl<T> TradeBar<T> where T: DataNumberType {
@@ -114,8 +110,6 @@ impl<T> TradeBar<T> where T: DataNumberType {
         start_time: i64,
         end_time: i64,
         is_fill_fwd: bool,
-        symbol: SecuritySymbol,
-        period: Resolution
     ) -> TradeBar<T> {
         TradeBar {
             volume,
@@ -126,8 +120,6 @@ impl<T> TradeBar<T> where T: DataNumberType {
             start_time,
             end_time,
             is_fill_fwd,
-            symbol: symbol,
-            period   
         }
     }
 
@@ -138,7 +130,7 @@ impl<T> TradeBar<T> where T: DataNumberType {
 
 impl<T: fmt::Debug> fmt::Display for TradeBar<T> where T: DataNumberType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "volume: {:?}, open: {:?}, high: {:?}, low: {:?}, close: {:?}, start time: {:?}, end_time: {:?}, fill fwd: {}, symbol: {:?}, period: {:?}", self.volume, self.open, self.high, self.low, self.close, NaiveDateTime::from_timestamp_millis(self.start_time), NaiveDateTime::from_timestamp_millis(self.end_time), self.is_fill_fwd, self.symbol, self.period)
+        write!(f, "volume: {:?}, open: {:?}, high: {:?}, low: {:?}, close: {:?}, start time: {:?}, end_time: {:?}, fill fwd: {}", self.volume, self.open, self.high, self.low, self.close, NaiveDateTime::from_timestamp_millis(self.start_time), NaiveDateTime::from_timestamp_millis(self.end_time), self.is_fill_fwd)
     }
 }
 
@@ -147,7 +139,6 @@ impl<T: fmt::Debug> fmt::Display for TradeBar<T> where T: DataNumberType {
 mod tests {
     use super::*;
     use rust_decimal_macros::dec;
-    use crate::security::SecuritySymbol;
 
     #[test]
     fn add() {
@@ -161,8 +152,6 @@ mod tests {
             1001,
             1002,
             false,
-            SecuritySymbol::Equity(String::from("Test Symbol")),
-            Resolution::Day
         );
 
         // Act

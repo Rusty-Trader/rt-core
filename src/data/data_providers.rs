@@ -56,7 +56,7 @@ impl<T> IntoDataPoint for YahooFinanceTradeBar<T> where T: DataNumberType {
     fn to_datapoint(self, symbol: SecuritySymbol, resolution: Resolution) -> DataPoint<Self::NumberType> {
 
         let mut tmp: TradeBar<Self::NumberType> = TradeBar::from(self);
-        tmp.period = resolution;
+        // tmp.period = resolution;
 
         DataPoint {
             symbol,
@@ -78,8 +78,6 @@ impl<T> From<YahooFinanceTradeBar<T>> for TradeBar<T> where T: DataNumberType {
             start_time: item.date.and_hms_opt(0, 0, 0).unwrap().timestamp() as i64 * 1000,
             end_time: add_day_to_date(item.date).and_hms_opt(0, 0, 0).unwrap().timestamp() as i64 * 1000,
             is_fill_fwd: true,
-            symbol: SecuritySymbol::Equity(String::from("")),
-            period: item.period,
         }
     }
 }

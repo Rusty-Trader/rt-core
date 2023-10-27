@@ -291,8 +291,6 @@ mod tests {
                     27000,
                     28000,
                     false,
-                    SecuritySymbol::Equity(String::from("TS")),
-                    Resolution::Day,
                 )),
                 period: Resolution::Day
             }
