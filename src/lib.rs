@@ -1,4 +1,4 @@
-use std::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
+use std::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign, Rem};
 use std::cmp::{PartialEq, PartialOrd};
 use std::fmt::Debug;
 use rust_decimal::Decimal;
@@ -13,6 +13,7 @@ pub mod portfolio;
 pub mod broker;
 pub mod security;
 mod results;
+mod lob;
 
 
 pub trait NumberType: Copy + 
@@ -21,6 +22,7 @@ pub trait NumberType: Copy +
     Sub<Self, Output = Self> + 
     Mul<Self, Output = Self> + 
     Div<Self, Output = Self> +
+    Rem<Self, Output = Self> +
     AddAssign<Self> +
     SubAssign<Self> +
     PartialEq<Self> +

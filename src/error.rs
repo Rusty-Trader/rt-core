@@ -18,7 +18,9 @@ pub enum Error {
 
     OrderError(String),
 
-    FXConversionError(String)
+    FXConversionError(String),
+
+    LOBError(String)
 
 }
 
@@ -36,6 +38,8 @@ impl fmt::Display for Error {
             Error::OrderError(d) =>
                 write!(f, "{}", d),
             Error::FXConversionError(d) =>
+                write!(f, "{}", d),
+            Error::LOBError(d) =>
                 write!(f, "{}", d)
         }
     }
