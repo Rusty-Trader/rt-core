@@ -4,61 +4,76 @@ use crate::DataNumberType;
 use crate::error::Error;
 use crate::security::SecuritySymbol;
 
-#[derive(Debug, Copy, Clone)]
-pub struct LOBOrder<T> where T: DataNumberType {
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub struct LOBOrder {
     side: Side,
-    volume: T,
-    price: T,
+    volume: f64,
+    price: f64,
     trader: i64,
     order_id: i64
 }
 
+impl LOBOrder {
 
-pub struct OrderBook<T> where T: DataNumberType {
-
-    symbol: SecuritySymbol,
-    buy_price_points: VecDeque<VecDeque<LOBOrder<T>>>,
-    sell_price_points: VecDeque<VecDeque<LOBOrder<T>>>,
-    bid_price: T,
-    ask_price: T,
-    lot_size: T
+    pub fn new(side: Side, volume: f64, price: f64, trader: i64, order_id: i64) -> Self {
+        Self {
+            side,
+            volume,
+            price,
+            trader,
+            order_id
+        }
+    }
 }
 
-impl<T> OrderBook<T> where T: DataNumberType + From<i8> {
 
-    pub fn new(symbol: SecuritySymbol, lot_size: T) -> Self {
+pub struct OrderBook {
+
+    symbol: SecuritySymbol,
+    buy_price_points: VecDeque<VecDeque<LOBOrder>>,
+    sell_price_points: VecDeque<VecDeque<LOBOrder>>,
+    bid_price: f64,
+    ask_price: f64,
+    lot_size: f64
+}
+
+impl OrderBook {
+
+    pub fn new(symbol: SecuritySymbol, lot_size: f64) -> Self {
         Self {
             symbol,
             buy_price_points: VecDeque::new(),
             sell_price_points: VecDeque::new(),
-            bid_price: <i8 as Into<T>>::into(0),
-            ask_price: <i8 as Into<T>>::into(0),
+            bid_price: 0.0,
+            ask_price: 0.0,
             lot_size
         }
     }
 
 
-    fn price_to_index(&self, price: T, side: Side) -> usize where T: Into<usize> {
+    fn price_to_index(&self, price: f64, side: Side) -> usize {
         match side {
             Side::Buy => {
-                ((self.bid_price - price) / self.lot_size).into()
+                ((self.bid_price - price) / self.lot_size) as usize
             },
             Side::Sell => {
-                ((price - self.ask_price) / self.lot_size).into()
+                ((price - self.ask_price) / self.lot_size) as usize
             }
         }
     }
 
-    fn is_divisible_by_lot_size(&self, price: T) -> bool where T: Into<i8> {
-        price % self.lot_size == <i8 as Into<T>>::into(0)
+    fn is_divisible_by_lot_size(&self, price: f64) -> bool {
+        (price % self.lot_size) as u64 == 0
     }
 
-    fn order_match_info(&mut self, order: &LOBOrder<T>) where T: Into<usize> + Into<i8> {
-
+    fn order_match_info(&self, order: &LOBOrder) where {
+        // TODO: Add some logging
     }
 
-    fn limit_order_buy(&mut self, order: &LOBOrder<T>) -> Result<(), Error> where T: Into<usize> + Into<i8> {
+    fn limit_order_buy(&mut self, order: &LOBOrder) -> Result<(), Error> {
         let mut order_vol = order.volume;
+
+        let mut order_matches: Vec<LOBOrder> = Vec::new();
 
         for i in 0..=self.price_to_index(order.price, Side::Buy) {
             // Access the index add the ask price and move up
@@ -69,10 +84,10 @@ impl<T> OrderBook<T> where T: DataNumberType + From<i8> {
                     if let Some(matched_order) = matched_index.get_mut(i) {
                         if order_vol < matched_order.volume {
                             matched_order.volume -= order_vol;
-                            self.order_match_info(order);
+                            order_matches.push(order.to_owned());
                         } else {
                             order_vol -= matched_order.volume;
-                            self.order_match_info(order);
+                            order_matches.push(order.to_owned());
                         }
                     }
                 }
@@ -84,7 +99,7 @@ impl<T> OrderBook<T> where T: DataNumberType + From<i8> {
 
     }
 
-    pub fn add_limit_order(&mut self, order: LOBOrder<T>) -> Result<(), Error> where T: Into<usize> + Into<i8> {
+    pub fn add_limit_order(&mut self, order: LOBOrder) -> Result<(), Error> {
 
         // Check that the price of the order is divisible by the lot size and so accepted by the order book
         if !self.is_divisible_by_lot_size(order.price) {
@@ -99,7 +114,7 @@ impl<T> OrderBook<T> where T: DataNumberType + From<i8> {
                     if order.price > self.bid_price {
 
                         // Add blank lots in the list so that the new order is front
-                        let no_missing_lots: usize = ((order.price - self.bid_price) / self.lot_size).into();
+                        let no_missing_lots = ((order.price - self.bid_price) / self.lot_size) as u64;
 
                         self.bid_price = order.price;
 
@@ -115,6 +130,15 @@ impl<T> OrderBook<T> where T: DataNumberType + From<i8> {
                     } else {
 
                     }
+                } else if self.buy_price_points.is_empty() {
+
+                    self.bid_price = order.price;
+
+                    let mut tmp = VecDeque::new();
+                    tmp.push_front(order);
+                    self.buy_price_points.push_front(tmp);
+
+
                 } else {
 
                 }
@@ -133,29 +157,79 @@ mod tests {
 
     use super::*;
 
-    fn setup_order_book<T>() -> OrderBook<T> {
+    fn setup_empty_order_book() -> OrderBook {
 
-        let lob = OrderBook::new(
+        let mut lob = OrderBook::new(
             SecuritySymbol::Equity(String::from("Test")),
-            0.01 as f64
+            0.01
         );
 
+        lob
 
-       lob
     }
 
+    #[test]
     fn test_lob_add_limit_order() {
 
         // Arrange
+        let mut lob = setup_empty_order_book();
+
+        let order = LOBOrder::new(
+            Side::Buy,
+            10.0,
+            1.1,
+            1001,
+            1
+        );
+
+        let expected_order = order;
+        let expected_bid_price = 1.1;
+
+        // Act
+        _ = lob.add_limit_order(order);
+
+        let result_order = lob.buy_price_points[0][0];
+        let result_bid_price = lob.bid_price;
+
+        // Assert
+        assert_eq!(result_order, expected_order);
+        assert_eq!(result_bid_price, expected_bid_price)
+
+    }
+
+    #[test]
+    fn test_lob_sell_limit_order() {
+
+        // Arrange
+
+        // Act
+
+        // Assert
+        assert_eq!(0, 1)
+    }
 
 
+    #[test]
+    fn test_lob_add_buy_limit_in_spread() {
 
-        let expected =
+        // Arrange
+
+        // Act
+
+        // Assert
+        assert_eq!(0, 1)
+    }
+
+    #[test]
+    fn test_lob_buy_limit_order_take_liquidity() {
+
+        // Arrange
 
         // Act
 
         // Assert
 
+        assert_eq!(0, 1)
     }
 
 

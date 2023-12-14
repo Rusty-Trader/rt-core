@@ -27,6 +27,7 @@ pub trait NumberType: Copy +
     SubAssign<Self> +
     PartialEq<Self> +
     PartialOrd<Self> +
+    From<i16> +
     From<i8> {}
 
 impl NumberType for f64 {}
