@@ -70,33 +70,113 @@ impl OrderBook {
         // TODO: Add some logging
     }
 
+    // fn limit_order_buy(&mut self, order: &LOBOrder) -> Result<(), Error> {
+    //     let mut order_vol = order.volume;
+    //
+    //     let mut order_matches: Vec<LOBOrder> = Vec::new();
+    //
+    //     for i in 0..=self.price_to_index(order.price, Side::Buy) {
+    //         // Access the index add the ask price and move up
+    //         if let Some(matched_index) = self.sell_price_points.get_mut(i) {
+    //
+    //             for i in 0..=matched_index.len() {
+    //
+    //                 if let Some(matched_order) = matched_index.get_mut(i) {
+    //                     if order_vol < matched_order.volume {
+    //                         matched_order.volume -= order_vol;
+    //                         order_matches.push(order.to_owned());
+    //                     } else {
+    //                         order_vol -= matched_order.volume;
+    //                         order_matches.push(order.to_owned());
+    //                     }
+    //                 }
+    //             }
+    //
+    //         }
+    //     }
+    //
+    //     Ok(())
+    //
+    // }
+
     fn limit_order_buy(&mut self, order: &LOBOrder) -> Result<(), Error> {
-        let mut order_vol = order.volume;
 
-        let mut order_matches: Vec<LOBOrder> = Vec::new();
+        // If true the buy side will add liquidity and not take from the sell side
+        if (order.price < self.ask_price) && (!self.buy_price_points.is_empty()) {
+            // If true the buy side will add liquidity and shift the bid price
+            if order.price > self.bid_price {
 
-        for i in 0..=self.price_to_index(order.price, Side::Buy) {
-            // Access the index add the ask price and move up
-            if let Some(matched_index) = self.sell_price_points.get_mut(i) {
+                // Add blank lots in the list so that the new order is front
+                let no_missing_lots = ((order.price - self.bid_price) / self.lot_size) as u64;
 
-                for i in 0..=matched_index.len() {
+                self.bid_price = order.price;
 
-                    if let Some(matched_order) = matched_index.get_mut(i) {
-                        if order_vol < matched_order.volume {
-                            matched_order.volume -= order_vol;
-                            order_matches.push(order.to_owned());
-                        } else {
-                            order_vol -= matched_order.volume;
-                            order_matches.push(order.to_owned());
-                        }
+                for i in 0..no_missing_lots {
+                    if i < no_missing_lots - 1 {
+                        self.buy_price_points.push_front(VecDeque::new());
+                    } else {
+                        let mut tmp = VecDeque::new();
+                        tmp.push_front(order.clone());
+                        self.buy_price_points.push_front(tmp);
                     }
                 }
+            } else {
 
             }
+        } else if self.buy_price_points.is_empty() {
+
+            self.bid_price = order.price;
+
+            let mut tmp = VecDeque::new();
+            tmp.push_front(order.clone());
+            self.buy_price_points.push_front(tmp);
+
+
+        } else {
+            self.market_order(order.side, order.volume)?
         }
 
         Ok(())
+    }
 
+    fn limit_order_sell(&mut self, order: &LOBOrder) -> Result<(), Error> {
+
+        // If true the buy side will add liquidity and not take from the sell side
+        if (order.price > self.bid_price) && (!self.sell_price_points.is_empty()) {
+            // If true the buy side will add liquidity and shift the bid price
+            if order.price < self.ask_price {
+
+                // Add blank lots in the list so that the new order is front
+                let no_missing_lots = ((self.ask_price - order.price) / self.lot_size) as u64;
+
+                self.ask_price = order.price;
+
+                for i in 0..no_missing_lots {
+                    if i < no_missing_lots - 1 {
+                        self.sell_price_points.push_front(VecDeque::new());
+                    } else {
+                        let mut tmp = VecDeque::new();
+                        tmp.push_front(order.clone());
+                        self.sell_price_points.push_front(tmp);
+                    }
+                }
+            } else {
+
+            }
+        } else if self.sell_price_points.is_empty() {
+
+            self.ask_price = order.price;
+
+            let mut tmp = VecDeque::new();
+            tmp.push_front(order.clone());
+            self.sell_price_points.push_front(tmp);
+
+
+        } else {
+            self.market_order(order.side, order.volume)?
+        }
+
+        Ok(())
     }
 
     pub fn add_limit_order(&mut self, order: LOBOrder) -> Result<(), Error> {
@@ -108,46 +188,52 @@ impl OrderBook {
 
         match order.side {
             Side::Buy => {
-                // If true the buy side will add liquidity and not take from the sell side
-                if order.price < self.ask_price {
-                    // If true the buy side will add liquidity and shift the bid price
-                    if order.price > self.bid_price {
-
-                        // Add blank lots in the list so that the new order is front
-                        let no_missing_lots = ((order.price - self.bid_price) / self.lot_size) as u64;
-
-                        self.bid_price = order.price;
-
-                        for i in 0..no_missing_lots {
-                            if i < no_missing_lots - 1 {
-                                self.buy_price_points.push_front(VecDeque::new());
-                            } else {
-                                let mut tmp = VecDeque::new();
-                                tmp.push_front(order);
-                                self.buy_price_points.push_front(tmp);
-                            }
-                        }
-                    } else {
-
-                    }
-                } else if self.buy_price_points.is_empty() {
-
-                    self.bid_price = order.price;
-
-                    let mut tmp = VecDeque::new();
-                    tmp.push_front(order);
-                    self.buy_price_points.push_front(tmp);
-
-
-                } else {
-
-                }
+                self.limit_order_buy(&order)?
             },
             Side::Sell => {
-
+                self.limit_order_sell(&order)?
             }
         }
         Ok(())
+    }
+
+    pub fn market_order(&mut self, side: Side, volume: f64) -> Result<() , Error> {
+
+        let mut current_volume = volume;
+
+        match side {
+            Side::Buy => {
+                if !self.sell_price_points.is_empty() {
+                    while current_volume > 0.0 {
+                        let front_price_point = &mut self.sell_price_points[0][0];
+                        if front_price_point.volume <= current_volume {
+                            current_volume -= front_price_point.volume
+                        } else {
+                            front_price_point.volume -= current_volume;
+                            current_volume = 0.0;
+                        }
+
+                    }
+                }
+            },
+            Side::Sell => {
+                if !self.buy_price_points.is_empty() {
+                    while current_volume > 0.0 {
+                        let front_price_point = &mut self.buy_price_points[0][0];
+                        if front_price_point.volume <= current_volume {
+                            current_volume -= front_price_point.volume
+                        } else {
+                            front_price_point.volume -= current_volume;
+                            current_volume = 0.0;
+                        }
+
+                    }
+                }
+
+
+            }
+        }
+       Ok(())
     }
 }
 
@@ -166,6 +252,35 @@ mod tests {
 
         lob
 
+    }
+
+    fn setup_order_book_with_spread() -> OrderBook {
+
+        let mut lob = OrderBook::new(
+            SecuritySymbol::Equity(String::from("Test")),
+            0.01
+        );
+
+        let buy_order = LOBOrder::new(
+            Side::Buy,
+            10.0,
+            1.1,
+            1001,
+            1
+        );
+
+        let sell_order = LOBOrder::new(
+            Side::Sell,
+            12.0,
+            1.3,
+            1002,
+            2
+        );
+
+        _ = lob.add_limit_order(buy_order);
+        _ = lob.add_limit_order(sell_order);
+
+        lob
     }
 
     #[test]
@@ -201,11 +316,29 @@ mod tests {
     fn test_lob_sell_limit_order() {
 
         // Arrange
+        let mut lob = setup_empty_order_book();
+
+        let order = LOBOrder::new(
+            Side::Sell,
+            10.0,
+            1.1,
+            1001,
+            1
+        );
+
+        let expected_order = order;
+        let expected_ask_price = 1.1;
 
         // Act
+        _ = lob.add_limit_order(order);
+
+        let result_order = lob.sell_price_points[0][0];
+        let result_ask_price = lob.ask_price;
 
         // Assert
-        assert_eq!(0, 1)
+        assert_eq!(result_order, expected_order);
+        assert_eq!(result_ask_price, expected_ask_price)
+
     }
 
 
@@ -213,25 +346,68 @@ mod tests {
     fn test_lob_add_buy_limit_in_spread() {
 
         // Arrange
+        let mut lob = setup_order_book_with_spread();
+
+        let order = LOBOrder::new(
+            Side::Buy,
+            9.0,
+            1.2,
+            1003,
+            3
+        );
+
+        let expected_order = order;
+        let expected_bid_price = 1.2;
+
 
         // Act
+        _ = lob.add_limit_order(order);
+
+        let result_order = lob.buy_price_points[0][0];
+        let result_bid_price = lob.bid_price;
 
         // Assert
-        assert_eq!(0, 1)
+        assert_eq!(result_order, expected_order);
+        assert_eq!(result_bid_price, expected_bid_price)
+
     }
 
     #[test]
     fn test_lob_buy_limit_order_take_liquidity() {
 
         // Arrange
+        let mut lob = setup_order_book_with_spread();
+
+        let order = LOBOrder::new(
+            Side::Sell,
+            9.0,
+            1.1,
+            1003,
+            2
+        );
+
+        let expected_order = LOBOrder::new(
+            Side::Buy,
+            1.0,
+            1.1,
+            1001,
+            1
+        );
+
+        let expected_bid_price = 1.1;
 
         // Act
+        _ = lob.add_limit_order(order);
+
+        let result_order = lob.buy_price_points[0][0];
+        let result_bid_price = lob.bid_price;
 
         // Assert
-
-        assert_eq!(0, 1)
+        assert_eq!(result_order, expected_order);
+        assert_eq!(result_bid_price, expected_bid_price)
     }
 
+    // TODO: Test to check that bid and ask prices are updated with market order
 
 
 }
